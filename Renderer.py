@@ -1,8 +1,6 @@
 import pygame
-
-
 class Renderer:
-
+    
     def __init__(self, windowRes, objectBank, displayType):
 
         self.RESOLUTION = windowRes
@@ -31,32 +29,4 @@ class Renderer:
 
         self.running = True
 
-    def main_loop(self):
-
-        while self.running:
-
-            dt = self.clock.tick(60) / 1000.0
-
-            for event in pygame.event.get():
-
-                if event.type == pygame.QUIT:
-                    self.running = False
-
-            self.screen.fill((0, 0, 0))
-
-            pygame.draw.polygon(
-                self.screen,
-                (255, 255, 255),
-                [(100, 100), (200, 100), (150, 200)]
-            )
-
-            pygame.display.flip()
-
-
-renderer = Renderer(
-    [1080, 1080],
-    None,
-    pygame.RESIZABLE
-)
-
-renderer.main_loop()
+    
