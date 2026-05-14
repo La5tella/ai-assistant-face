@@ -85,12 +85,17 @@ class FaceObject:
 
         radius = self.transform.scale
         center_x, center_y = self.transform.origin_position
+        rotation = self.transform.rotation
+        cos_rotation = math.cos(rotation)
+        sin_rotation = math.sin(rotation)
 
         for i, vert in enumerate(self.verts):
             theta = (2 * math.pi * i) / self.vert_count
+            x = radius * math.cos(theta)
+            y = radius * math.sin(theta)
             vert.target_position = [
-                center_x + radius * math.cos(theta),
-                center_y + radius * math.sin(theta)
+                center_x + x * cos_rotation - y * sin_rotation,
+                center_y + x * sin_rotation + y * cos_rotation
             ]
 
     def apply_shape_state(self, shape_state):

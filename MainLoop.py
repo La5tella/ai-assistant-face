@@ -2,8 +2,10 @@ from Renderer import Renderer
 from FaceScene import FaceObject,Transform
 import pygame
 
+RESOLUTION = [720,720]
+
 ren = Renderer(
-    [1080, 1080],
+    RESOLUTION,
     None,
     pygame.RESIZABLE
 )
@@ -19,8 +21,8 @@ def main_loop(objCount):
                 object_id= i,
                 layer= 0,
                 shape_state= 'Circle',
-                vert_count= 100,
-                init_transform=Transform(origin_position=[540,540], scale=100)
+                vert_count= 4,
+                init_transform=Transform(origin_position=[RESOLUTION[0]/2,RESOLUTION[1]/2], scale=10)
             )
         )
     while running:
@@ -28,7 +30,7 @@ def main_loop(objCount):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        ren.screen.fill((0, 0, 0))
+        ren.screen.fill((0, 0, 2))
         for obj in objPool:
             if obj.active:
                 obj.update_shape_state("linear",dt)
