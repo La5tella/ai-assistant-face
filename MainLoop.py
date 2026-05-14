@@ -20,7 +20,7 @@ def main_loop(objCount):
             FaceObject(
                 object_id= i,
                 layer= 0,
-                shape_state= 'Circle',
+                shape_state= 'Rectangle',
                 vert_count= 4,
                 init_transform=Transform(origin_position=[RESOLUTION[0]/2,RESOLUTION[1]/2], scale=10)
             )
