@@ -21,8 +21,10 @@ def main_loop(objCount):
                 object_id= i,
                 layer= 0,
                 shape_state= 'Rectangle',
-                vert_count= 4,
-                init_transform=Transform(origin_position=[RESOLUTION[0]/2,RESOLUTION[1]/2], scale=10)
+                aspect_ratio=[9,16],
+                vert_count= 20,
+                init_transform=Transform(origin_position=[RESOLUTION[0]/2,RESOLUTION[1]/2], scale=10),
+                vert_debug=True
             )
         )
     while running:
@@ -30,7 +32,7 @@ def main_loop(objCount):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        ren.screen.fill((0, 0, 2))
+        ren.screen.fill((0, 0, 0))
         for obj in objPool:
             if obj.active:
                 obj.update_shape_state("linear",dt)
@@ -40,6 +42,9 @@ def main_loop(objCount):
                     obj.color,
                     points
                 )
+                if obj.vert_debug:
+                    for i, vert in enumerate(obj.verts):
+                        vert.draw_vert_debug(vertId=i,screen=ren)
         pygame.display.flip()
 
 

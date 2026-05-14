@@ -20,6 +20,8 @@ class Renderer:
 
         pygame.init()
 
+        self.font = pygame.font.SysFont('Arial', 32)
+
         self.screen = pygame.display.set_mode(
             (self.RESOLUTION[0], self.RESOLUTION[1]),
             self.DISPLAY
