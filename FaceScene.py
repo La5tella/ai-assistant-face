@@ -44,7 +44,7 @@ class Vert:
         self.target_position = target_position or []
 
     def draw_vert_debug(self, vertId, screen):
-        text_surface = screen.font.render(str(vertId), True, (0, 255, 0))
+        text_surface = screen.fonts[0].render(str(vertId), True, (0, 255, 0))
         screen.screen.blit(text_surface, self.position)
 
 class FaceObject:
@@ -98,6 +98,8 @@ class FaceObject:
         self.vert_count = vert_count
         self.vert_debug = vert_debug
         self.verts = []
+        self.transition_timer = 0
+        self.in_transition = False
 
         for i in range(self.vert_count):
             self.verts.append(Vert(position=[0,0]))
@@ -216,12 +218,11 @@ class FaceObject:
         half_width = radius * math.sqrt(3) * 0.5
         half_height = radius * 0.5
         corners = [
-                
-                [self.transform.origin_position[0] - half_width, self.transform.origin_position[1] - half_height],
-                [self.transform.origin_position[0], self.transform.origin_position[1] + radius], # top-left
-                [self.transform.origin_position[0] + half_width, self.transform.origin_position[1] - half_height] # top-right
-                                  # bottom
+            [self.transform.origin_position[0] + half_width, self.transform.origin_position[1] - half_height],
+            [self.transform.origin_position[0] - half_width, self.transform.origin_position[1] - half_height],
+            [self.transform.origin_position[0], self.transform.origin_position[1] + radius],
                 ]
+
         self.orientVertsAlongPolygon(corners)
     #---------------End Shape State Orientation Functions---------------
 
@@ -229,7 +230,7 @@ class FaceObject:
         next_index = (self.shape_state_index + 1) % len(self.shape_state_lib)
         self.shape_state = self.shape_state_lib[next_index]
         self.shape_state_index = next_index
-        print("index: "+ str(self.shape_state_index) + " with state: " + self.shape_state)
+        self.transition_timer = 0
 
 
     def apply_shape_state(self, shape_state):
@@ -247,17 +248,47 @@ class FaceObject:
             case 'Triangle':
                 self.triangleOrient()
 
-    def update_shape_state(self, ease_type, dt):
+    def update_shape_state(self, ease_type, duration, dt):
         """
         Eases the shape into it's shape state.
             ease_type: 'linear',
         """
+        
         self.apply_shape_state(self.shape_state)
+        
+        self.transition_timer += dt
+        t = self.transition_timer / duration
+        t = self.ease_value(ease_type,t)
+
+
         for vert in self.verts:
-            if not vert.position == vert.target_position:   
-                if ease_type == "linear":
-                    vert.position =[self.lerp(vert.position[0],vert.target_position[0], dt), self.lerp(vert.position[1],vert.target_position[1], dt)] 
+            if vert.position != vert.target_position:
+                    vert.position =[self.lerp(vert.position[0],vert.target_position[0], t), self.lerp(vert.position[1],vert.target_position[1], t)] 
+                    dx = vert.target_position[0] - vert.position[0]
+                    dy = vert.target_position[1] - vert.position[1]
+
+                    if math.sqrt(dx * dx + dy * dy) < .01:
+                        vert.position = vert.target_position.copy()
+                        
 
     def lerp(self, a, b, t):
         return a + (b - a) * t
 
+    def ease_value(self, ease_type, t):
+        t = max(0, min(1, t))
+
+        match ease_type:
+            case "linear":
+                return t
+
+            case "ease-in":
+                return t * t
+
+            case "ease-out":
+                return 1 - (1 - t) * (1 - t)
+
+            case "ease":
+                return t * t * (3 - 2 * t)  # smoothstep
+
+            case _:
+                return t

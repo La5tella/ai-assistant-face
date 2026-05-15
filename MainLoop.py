@@ -23,9 +23,11 @@ def main_loop(objCount):
     running = True
 
     debug_button = Button(
-        rect = [10,10,100,100],
+        rect = [10,10,75,25],
         text = "Cycle State",
-        on_clicked = lambda: cycle_all_shape_states()
+        on_clicked = lambda: cycle_all_shape_states(),
+        screen=ren,
+        font = pygame.font.SysFont('Helvetica',size=14,bold=True)
     )
 
     for i in range(objCount):
@@ -36,7 +38,7 @@ def main_loop(objCount):
                 shape_state= 'Circle',
                 aspect_ratio=[16,9],
                 vert_count= 32,
-                init_transform=Transform(origin_position=[RESOLUTION[0]/2,RESOLUTION[1]/2], scale=100),
+                init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=100),
                 vert_debug=True
             )
         )
@@ -50,7 +52,7 @@ def main_loop(objCount):
         ren.screen.fill((0, 0, 0))
         for obj in objPool:
             if obj.active:
-                obj.update_shape_state("linear",dt)
+                obj.update_shape_state("ease",1,dt)
                 points = [vert.position for vert in obj.verts]
                 pygame.draw.polygon(
                     ren.screen,
@@ -61,10 +63,10 @@ def main_loop(objCount):
                     for i, vert in enumerate(obj.verts):
                         vert.draw_vert_debug(vertId=i,screen=ren)
         if debug_button != None:
-           debug_button.draw(ren.screen,events)
+           debug_button.draw(events)
 
         pygame.display.flip()
 
 
 
-main_loop(1)
+main_loop(2)
