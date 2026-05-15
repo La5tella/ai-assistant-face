@@ -89,11 +89,14 @@ class FaceObject:
             self.transform = init_transform
 
         self.shape_state = shape_state
+        self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
+        self.shape_state_index = self.shape_state_lib.index(self.shape_state)
+
         self.target_state = None
+        
         self.aspect_ratio = aspect_ratio
         self.vert_count = vert_count
         self.vert_debug = vert_debug
-
         self.verts = []
 
         for i in range(self.vert_count):
@@ -127,21 +130,63 @@ class FaceObject:
         for i, vert in enumerate(self.verts):
             theta = (2 * math.pi * i) / self.vert_count
             x = radius * math.cos(theta)
-            y = radius * math.sin(theta)
+            y = -radius * math.sin(theta)
             vert.target_position = [
                 center_x + x * cos_rotation - y * sin_rotation,
                 center_y + x * sin_rotation + y * cos_rotation
             ]
         
-    def rectangleOrient(self):
+    def orientVertsAlongPolygon(self, corners):
+        if len(corners) < 2:
+            return
+
+        if len(self.verts) <= 0:
+            return
+
+        corner_count = len(corners)
+        vert_count = len(self.verts)
+
+        # If there are fewer verts than corners, fall back to simple perimeter sampling.
+        # You cannot preserve every corner if you do not have enough verts.
+        if vert_count < corner_count:
+            return
+
+        verts_per_side = vert_count // corner_count
+        leftover_verts = vert_count % corner_count
+
+        vert_index = 0
+
+        for side_index in range(corner_count):
+            start = corners[side_index]
+            end = corners[(side_index + 1) % corner_count]
+
+            side_vert_count = verts_per_side
+
+            if side_index < leftover_verts:
+                side_vert_count += 1
+
+            for i in range(side_vert_count):
+                if vert_index >= vert_count:
+                    return
+
+                t = i / side_vert_count
+
+                x = start[0] + (end[0] - start[0]) * t
+                y = start[1] + (end[1] - start[1]) * t
+
+                self.verts[vert_index].target_position = [x, y]
+                vert_index += 1
+
+    def rectangleOrient(self, a_ratio=None):
         """
         This sets the target position's for the verticies into a rectangle pattern.
         """
-        width = self.transform.scale * self.aspect_ratio[0]
-        height = self.transform.scale * self.aspect_ratio[1]
-        side_vert_count = self.vert_count/4
-        vert_spacing_w = width/side_vert_count
-        vert_spacing_h = width/side_vert_count
+        if a_ratio == None: a_ratio=self.aspect_ratio
+        
+
+        width = self.transform.scale * (a_ratio[0]/a_ratio[1]) 
+        height = self.transform.scale
+        
 
         corners = [
             [
@@ -160,32 +205,7 @@ class FaceObject:
         """
         corners: (-,-),(+,-),(-,+),(+,+)
         """
-        for i in range(self.vert_count):
-            for j,vert in enumerate(self.verts):
-                match i:
-                    case 0:
-                        vert.target_position = [
-                            corners[0][0] - ((i + 1) * (j * vert_spacing_w)),
-                            corners[0][1]
-                        ]
-                    case 1:
-                        vert.target_position = [
-                            corners[1][0],
-                            corners[1][1] + ((i + 1) * (j * vert_spacing_h))
-                        ]
-                    case 2:
-                        vert.target_position = [
-                            corners[2][0] + ((i + 1) * (j * vert_spacing_w)),
-                            corners[2][1]
-                        ]
-                    case 3:
-                        vert.target_position = [
-                            corners[3][0],
-                            corners[3][1] - ((i + 1) * (j * vert_spacing_h))
-                        ]
-                print((i+1)*j)
-                pass
-       
+        self.orientVertsAlongPolygon(corners)
         
 
     def triangleOrient(self):
@@ -195,12 +215,22 @@ class FaceObject:
         radius = self.transform.scale
         half_width = radius * math.sqrt(3) * 0.5
         half_height = radius * 0.5
-        self.polygonOrient([
-            [0, -radius],
-            [half_width, half_height],
-            [-half_width, half_height]
-        ])
+        corners = [
+                
+                [self.transform.origin_position[0] - half_width, self.transform.origin_position[1] - half_height],
+                [self.transform.origin_position[0], self.transform.origin_position[1] + radius], # top-left
+                [self.transform.origin_position[0] + half_width, self.transform.origin_position[1] - half_height] # top-right
+                                  # bottom
+                ]
+        self.orientVertsAlongPolygon(corners)
     #---------------End Shape State Orientation Functions---------------
+
+    def cycle_shape_state(self):
+        next_index = (self.shape_state_index + 1) % len(self.shape_state_lib)
+        self.shape_state = self.shape_state_lib[next_index]
+        self.shape_state_index = next_index
+        print("index: "+ str(self.shape_state_index) + " with state: " + self.shape_state)
+
 
     def apply_shape_state(self, shape_state):
         """
@@ -211,8 +241,7 @@ class FaceObject:
             case'Circle':
                 self.circleOrient()
             case 'Square':
-                self.aspect_ratio=[1,1]
-                self.rectangleOrient()
+                self.rectangleOrient([1,1])
             case 'Rectangle':
                 self.rectangleOrient()
             case 'Triangle':
@@ -231,3 +260,4 @@ class FaceObject:
 
     def lerp(self, a, b, t):
         return a + (b - a) * t
+
