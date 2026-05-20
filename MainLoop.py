@@ -2,7 +2,11 @@ from Renderer import Renderer
 from FaceScene import FaceObject,Transform
 from UI import Button
 import pygame
+import json
+from pathlib import Path
 
+
+BASE_DIR = Path(__file__).resolve().parent
 RESOLUTION = [720,720]
 
 ren = Renderer(
@@ -12,6 +16,9 @@ ren = Renderer(
 )
 
 objPool = []
+
+with open(BASE_DIR / "ExpressionLibrary/expressions.json", "r") as file:
+    expression_data = json.load(file)
 
 
 def cycle_all_shape_states():
@@ -30,6 +37,7 @@ def main_loop(objCount):
         font = pygame.font.SysFont('Helvetica',size=14,bold=True)
     )
 
+
     for i in range(objCount):
         objPool.append(
             FaceObject(
@@ -39,9 +47,12 @@ def main_loop(objCount):
                 aspect_ratio=[16,9],
                 vert_count= 32,
                 init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=100),
-                vert_debug=True
+                vert_debug=True,
+                active=False
             )
         )
+    
+    apply_face_state()
 
     while running:
         dt = ren.clock.tick(60) / 1000.0
@@ -68,5 +79,20 @@ def main_loop(objCount):
         pygame.display.flip()
 
 
+def apply_face_state():
+    default_state_name = expression_data["default_state"]
+    default_state = expression_data["states"][default_state_name]
 
-main_loop(2)
+    for obj_id, state_data in default_state.items():
+        obj = objPool[int(obj_id)]
+
+        for attr, value in state_data.items():
+            if attr == "position":
+                obj.transform.origin_position = value
+            else:
+                setattr(obj, attr, value)
+
+        
+
+
+main_loop(5)
