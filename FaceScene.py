@@ -1,6 +1,6 @@
 import pygame
 import math
-
+import animation as anim
 
 class Transform:
     """Position, scale, and rotation used to place a face object in the scene."""
@@ -95,23 +95,21 @@ class FaceObject:
         self.vert_debug = vert_debug
         self.verts = []
         self.transition_timer = 0
+        self.transition_duration = 0.25
+        self.ease_type = "ease"
         self.in_transition = False
 
-        self.anim = None
+        self.curr_anim = None
 
         self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
         self._shape_state = None
         self.shape_state_index = 0
-        self.shape_state = shape_state
 
 
         for i in range(self.vert_count):
             self.verts.append(Vert(position=[0,0]))
 
-        self.apply_shape_state(self.shape_state)
-            
-        for i, vert in enumerate(self.verts):
-            self.setVertPos(i,vert.target_position)
+        self.set_shape_state(shape_state, duration=0)
 
     @property
     def shape_state(self):
@@ -125,10 +123,7 @@ class FaceObject:
         if value not in self.shape_state_lib:
             raise ValueError(f"Invalid shape_state: {value}")
 
-        self._shape_state = value
-        self.shape_state_index = self.shape_state_lib.index(value)
-        self.apply_shape_state(value)
-        self.in_transition=True
+        self.set_shape_state(value)
         
 
     def setVertPos(self, id, position):
@@ -231,7 +226,6 @@ class FaceObject:
         """
         self.orientVertsAlongPolygon(corners)
         
-
     def triangleOrient(self):
         """
         This sets the target position's for the verticies into a triangle pattern.
@@ -251,10 +245,26 @@ class FaceObject:
     def cycle_shape_state(self):
         
         next_index = (self.shape_state_index + 1) % len(self.shape_state_lib)
-        self.shape_state = self.shape_state_lib[next_index]
-        self.shape_state_index = next_index
-        self.transition_timer = 0
+        self.set_shape_state(self.shape_state_lib[next_index])
         
+
+    def set_shape_state(self, shape_state, duration=0.25, easing="ease"):
+        if shape_state not in self.shape_state_lib:
+            raise ValueError(f"Invalid shape_state: {shape_state}")
+
+        self._shape_state = shape_state
+        self.shape_state_index = self.shape_state_lib.index(shape_state)
+        self.transition_timer = 0
+        self.transition_duration = max(duration, 0)
+        self.ease_type = easing
+        self.apply_shape_state(shape_state)
+
+        if self.transition_duration == 0:
+            for vert in self.verts:
+                vert.position = vert.target_position.copy()
+            self.in_transition = False
+        else:
+            self.in_transition = True
 
 
     def apply_shape_state(self, shape_state):
@@ -272,15 +282,29 @@ class FaceObject:
             case 'Triangle':
                 self.triangleOrient()
 
-    def update_shape_state(self, ease_type, duration, dt):
+    def update_shape_state(self, ease_type=None, duration=None, dt=0):
         """
         Eases the shape into it's shape state.
-            ease_type: 'linear',
+            ease_type: 'linear','ease-in','ease-out','ease'
+
         """
+        if ease_type is not None:
+            self.ease_type = ease_type
+
+        if duration is not None:
+            self.transition_duration = max(duration, 0)
+
         if self.in_transition:
+            if self.transition_duration == 0:
+                for vert in self.verts:
+                    vert.position = vert.target_position.copy()
+                self.in_transition = False
+                self.debug_movement(1)
+                return
+
             self.transition_timer += dt
-            t = self.transition_timer / duration
-            t = self.ease_value(ease_type,t)
+            t = self.transition_timer / self.transition_duration
+            t = self.ease_value(self.ease_type,t)
 
             self.in_transition = False
 
@@ -296,9 +320,10 @@ class FaceObject:
                             self.in_transition = True
 
             self.debug_movement(t)
-                    
-                        
 
+    def update(self, dt):
+        self.update_shape_state(dt=dt)
+                    
     def lerp(self, a, b, t):
         return a + (b - a) * t
 
@@ -326,3 +351,83 @@ class FaceObject:
             self.color = (self.lerp(225, 0, t), self.lerp(0, 225, t), 0)
         else:
             self.color = (0, 225, 0)
+
+
+class FaceScene:
+    """Coordinates high-level face expression commands across pooled face objects."""
+
+    def __init__(self, objects, expression_data):
+        """Store the drawable objects and expression library used by command handlers."""
+        self.objects = objects
+        self.expression_data = expression_data
+        self.current_expression = None
+
+    def handle_ai_command(self, data):
+        """Translate AI handler data into a face expression change.
+
+        Expected format:
+            {"emotion": "neutral", "duration": 0.25, "easing": "ease"}
+        These are the defaults.
+        """
+        expression_name = data.get("emotion", "neutral")
+        if expression_name is None:
+            return False
+
+        duration = data.get("duration", 0.25)
+        easing = data.get("easing", "ease")
+        return self.set_expression(expression_name, duration, easing)
+
+    def set_expression(self, expression_name, duration=0.25, easing="ease"):
+        """Apply one named expression from the JSON state library to all listed objects."""
+        expressions = self.expression_data.get("states", {})
+        if expressions is {}:
+            print("Unable to load expressions. Maybe check .json path?")
+        expression = expressions.get(expression_name)
+        if expression is None:
+            print(f"Unknown expression: {expression_name}")
+            return False
+
+        self.current_expression = expression_name
+
+        for obj_id, state_data in expression.items():
+            obj_index = int(obj_id)
+            if obj_index >= len(self.objects):
+                continue
+
+            self.apply_object_state(
+                self.objects[obj_index],
+                state_data,
+                duration,
+                easing
+            )
+
+        return True
+
+    def apply_object_state(self, obj, state_data, duration=0.25, easing="ease"):
+        """Apply one object's state data and start its shape animation if needed."""
+        shape_state = state_data.get("shape_state") 
+
+        if "position" in state_data:
+            obj.transform.origin_position = state_data["position"]
+
+        for attr, value in state_data.items():
+            if attr in ("position", "shape_state"):
+                continue
+            setattr(obj, attr, value)
+
+        if shape_state is not None:
+            obj.set_shape_state(shape_state, duration, easing)
+        else:
+            obj.apply_shape_state(obj.shape_state)
+
+    def update(self, dt):
+        """Advance animation for every active object in the scene."""
+        
+        for obj in self.objects:
+            getattr(anim, "Hover").update(obj,dt=dt)
+            #try:
+            #    getattr(anim, obj.curr_anim).update(dt)
+            #except:
+                
+            if obj.active:
+                obj.update(dt)

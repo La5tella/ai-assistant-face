@@ -1,5 +1,5 @@
 from Renderer import Renderer 
-from FaceScene import FaceObject,Transform
+from FaceScene import FaceObject, FaceScene, Transform
 from UI import Button
 import pygame
 import json
@@ -16,6 +16,7 @@ ren = Renderer(
 )
 
 objPool = []
+face_scene = None
 
 with open(BASE_DIR / "ExpressionLibrary/expressions.json", "r") as file:
     expression_data = json.load(file)
@@ -28,6 +29,7 @@ def cycle_all_shape_states():
         
 
 def main_loop(objCount):
+    global face_scene
     running = True
 
     debug_button = Button(
@@ -53,7 +55,8 @@ def main_loop(objCount):
             )
         )
     
-    apply_face_state()
+    face_scene = FaceScene(objPool, expression_data)
+    face_scene.set_expression(expression_data["default_state"], duration=0)
 
     while running:
         dt = ren.clock.tick(60) / 1000.0
@@ -62,9 +65,9 @@ def main_loop(objCount):
             if event.type == pygame.QUIT:
                 running = False
         ren.screen.fill((0, 0, 0))
+        face_scene.update(dt)
         for obj in objPool:
             if obj.active:
-                obj.update_shape_state("ease",1,dt)
                 points = [vert.position for vert in obj.verts]
                 pygame.draw.polygon(
                     ren.screen,
@@ -81,6 +84,10 @@ def main_loop(objCount):
 
 
 def apply_face_state():
+    if face_scene is not None:
+        face_scene.set_expression(expression_data["default_state"], duration=0)
+        return
+
     default_state_name = expression_data["default_state"]
     default_state = expression_data["states"][default_state_name]
 
