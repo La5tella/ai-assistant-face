@@ -88,10 +88,6 @@ class FaceObject:
         else:
             self.transform = init_transform
 
-        self.shape_state = shape_state
-        self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
-        self.shape_state_index = self.shape_state_lib.index(self.shape_state)
-
         self.target_state = None
         
         self.aspect_ratio = aspect_ratio
@@ -101,6 +97,14 @@ class FaceObject:
         self.transition_timer = 0
         self.in_transition = False
 
+        self.anim = None
+
+        self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
+        self._shape_state = None
+        self.shape_state_index = 0
+        self.shape_state = shape_state
+
+
         for i in range(self.vert_count):
             self.verts.append(Vert(position=[0,0]))
 
@@ -108,6 +112,24 @@ class FaceObject:
             
         for i, vert in enumerate(self.verts):
             self.setVertPos(i,vert.target_position)
+
+    @property
+    def shape_state(self):
+        return self._shape_state
+
+    @shape_state.setter
+    def shape_state(self, value):
+        """
+        This ensures that when the shape state changes, it automatically triggers apply_state_shape and opens the gate for update_state_shape to work
+        """
+        if value not in self.shape_state_lib:
+            raise ValueError(f"Invalid shape_state: {value}")
+
+        self._shape_state = value
+        self.shape_state_index = self.shape_state_lib.index(value)
+        self.apply_shape_state(value)
+        self.in_transition=True
+        
 
     def setVertPos(self, id, position):
         """
@@ -227,10 +249,12 @@ class FaceObject:
     #---------------End Shape State Orientation Functions---------------
 
     def cycle_shape_state(self):
+        
         next_index = (self.shape_state_index + 1) % len(self.shape_state_lib)
         self.shape_state = self.shape_state_lib[next_index]
         self.shape_state_index = next_index
         self.transition_timer = 0
+        
 
 
     def apply_shape_state(self, shape_state):
@@ -253,22 +277,26 @@ class FaceObject:
         Eases the shape into it's shape state.
             ease_type: 'linear',
         """
-        
-        self.apply_shape_state(self.shape_state)
-        
-        self.transition_timer += dt
-        t = self.transition_timer / duration
-        t = self.ease_value(ease_type,t)
+        if self.in_transition:
+            self.transition_timer += dt
+            t = self.transition_timer / duration
+            t = self.ease_value(ease_type,t)
 
+            self.in_transition = False
 
-        for vert in self.verts:
-            if vert.position != vert.target_position:
-                    vert.position =[self.lerp(vert.position[0],vert.target_position[0], t), self.lerp(vert.position[1],vert.target_position[1], t)] 
-                    dx = vert.target_position[0] - vert.position[0]
-                    dy = vert.target_position[1] - vert.position[1]
+            for vert in self.verts:
+                if vert.position != vert.target_position:
+                        vert.position =[self.lerp(vert.position[0],vert.target_position[0], t), self.lerp(vert.position[1],vert.target_position[1], t)] 
+                        dx = vert.target_position[0] - vert.position[0]
+                        dy = vert.target_position[1] - vert.position[1]
 
-                    if math.sqrt(dx * dx + dy * dy) < .01:
-                        vert.position = vert.target_position.copy()
+                        if math.sqrt(dx * dx + dy * dy) < .01:
+                            vert.position = vert.target_position.copy()
+                        else:
+                            self.in_transition = True
+
+            self.debug_movement(t)
+                    
                         
 
     def lerp(self, a, b, t):
@@ -292,3 +320,9 @@ class FaceObject:
 
             case _:
                 return t
+            
+    def debug_movement(self,t):
+        if self.in_transition:
+            self.color = (self.lerp(225, 0, t), self.lerp(0, 225, t), 0)
+        else:
+            self.color = (0, 225, 0)

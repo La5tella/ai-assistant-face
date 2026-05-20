@@ -6,12 +6,14 @@
             "0":{
                 "position":[180.0, 360.0],
                 "shape_state":"Circle",
-                "active":1
+                "active": true,
+                "anim":"eye_neutral"
             },
             "1":{
                 "position":[540.0, 360.0],
                 "shape_state":"Circle",
-                "active":1
+                "active": true,
+                "anim":"eye_neutral"
             }
         },
         "happy":{},

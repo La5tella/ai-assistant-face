@@ -23,7 +23,8 @@ with open(BASE_DIR / "ExpressionLibrary/expressions.json", "r") as file:
 
 def cycle_all_shape_states():
     for obj in objPool:
-        obj.cycle_shape_state()
+        if obj.active:
+            obj.cycle_shape_state()
         
 
 def main_loop(objCount):
