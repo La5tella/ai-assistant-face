@@ -1,6 +1,6 @@
 import pygame
 import math
-import animation as anim
+from animation import Animation
 
 class Transform:
     """Position, scale, and rotation used to place a face object in the scene."""
@@ -56,6 +56,7 @@ class FaceObject:
         layer=0,
         color=(255, 255, 255),
         shape_state = 'Circle',
+        anim_dict = {},
         aspect_ratio = [1,1],
         active = True,
         vert_count = 10,
@@ -74,7 +75,7 @@ class FaceObject:
         init_transform: Optional Transform overriding the default placement.
         vert_debug: draw vert debug?
         """
-
+        
         self.id = object_id
 
         self.visible = active
@@ -99,7 +100,9 @@ class FaceObject:
         self.ease_type = "ease"
         self.in_transition = False
 
-        self.curr_anim = None
+        self.anim = Animation(self)
+        self._curr_anim = None
+        self.anim_dict = anim_dict
 
         self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
         self._shape_state = None
@@ -111,6 +114,18 @@ class FaceObject:
 
         self.set_shape_state(shape_state, duration=0)
 
+    @property
+    def curr_anim(self):
+        return self._curr_anim
+
+    @curr_anim.setter
+    def curr_anim(self, value):
+        """
+        This should update the animation's time value
+        """
+        self.anim.time = 0
+        pass
+    
     @property
     def shape_state(self):
         return self._shape_state
@@ -124,7 +139,7 @@ class FaceObject:
             raise ValueError(f"Invalid shape_state: {value}")
 
         self.set_shape_state(value)
-        
+        self.anim.refresh_obj_data()
 
     def setVertPos(self, id, position):
         """
@@ -242,12 +257,12 @@ class FaceObject:
         self.orientVertsAlongPolygon(corners)
     #---------------End Shape State Orientation Functions---------------
 
+    #-----------------Shape State Application Functions-----------------
     def cycle_shape_state(self):
         
         next_index = (self.shape_state_index + 1) % len(self.shape_state_lib)
         self.set_shape_state(self.shape_state_lib[next_index])
         
-
     def set_shape_state(self, shape_state, duration=0.25, easing="ease"):
         if shape_state not in self.shape_state_lib:
             raise ValueError(f"Invalid shape_state: {shape_state}")
@@ -265,7 +280,6 @@ class FaceObject:
             self.in_transition = False
         else:
             self.in_transition = True
-
 
     def apply_shape_state(self, shape_state):
         """
@@ -288,13 +302,13 @@ class FaceObject:
             ease_type: 'linear','ease-in','ease-out','ease'
 
         """
-        if ease_type is not None:
-            self.ease_type = ease_type
-
-        if duration is not None:
-            self.transition_duration = max(duration, 0)
-
         if self.in_transition:
+            if ease_type is not None:
+                self.ease_type = ease_type
+
+            if duration is not None:
+                self.transition_duration = max(duration, 0)
+                
             if self.transition_duration == 0:
                 for vert in self.verts:
                     vert.position = vert.target_position.copy()
@@ -320,9 +334,11 @@ class FaceObject:
                             self.in_transition = True
 
             self.debug_movement(t)
-
+    #---------------End Shape State Orientation Functions---------------
+    #------------------------Animation Functions------------------------
     def update(self, dt):
         self.update_shape_state(dt=dt)
+        self.add_anim_movement(dt)
                     
     def lerp(self, a, b, t):
         return a + (b - a) * t
@@ -346,6 +362,11 @@ class FaceObject:
             case _:
                 return t
             
+    def add_anim_movement(self, dt):
+        self.anim.update(anim_type=self.curr_anim,dt=dt)
+    #----------------------End Animation Functions---------------------- 
+
+
     def debug_movement(self,t):
         if self.in_transition:
             self.color = (self.lerp(225, 0, t), self.lerp(0, 225, t), 0)
@@ -382,6 +403,7 @@ class FaceScene:
 
     def set_expression(self, expression_name, duration=0.25, easing="ease"):
         """Apply one named expression from the JSON state library to all listed objects."""
+        
         expressions = self.expression_data.get("states", {})
         if expressions is {}:
             print("Unable to load expressions. Maybe check .json path?")
@@ -427,10 +449,6 @@ class FaceScene:
         """Advance animation for every active object in the scene."""
         
         for obj in self.objects:
-            getattr(anim, "Hover").update(obj,dt=dt)
-            #try:
-            #    getattr(anim, obj.curr_anim).update(dt)
-            #except:
-                
+
             if obj.active:
                 obj.update(dt)

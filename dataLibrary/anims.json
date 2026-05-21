@@ -1,6 +1,7 @@
 {
-    "eye_neutral": ["anim.Hover", "anim.Blink"],
-    "eye_thinking": ["anim.Hover", "anim.Think"],
-    "eye_look_left": ["anim.Look"],
-    "eye_look_right": ["anim.Look"]
+    "default": ["Static"],
+    "eye_neutral": ["Hover", "Blink"],
+    "eye_thinking": ["Hover", "Think"],
+    "eye_look_left": ["Look"],
+    "eye_look_right": ["Look"]
 }

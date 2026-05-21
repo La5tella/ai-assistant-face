@@ -20,7 +20,8 @@ face_scene = None
 
 with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
     expression_data = json.load(file)
-
+with open(BASE_DIR / "dataLibrary/anims.json", "r") as file:
+    anim_library = json.load(file)
 
 def cycle_all_shape_states():
     for obj in objPool:
@@ -48,6 +49,7 @@ def main_loop(objCount):
                 layer= 0,
                 shape_state= 'Circle',
                 aspect_ratio=[16,9],
+                anim_dict=anim_library,
                 vert_count= 32,
                 init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=100),
                 vert_debug=True,
