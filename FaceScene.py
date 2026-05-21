@@ -369,6 +369,9 @@ class FaceScene:
             {"emotion": "neutral", "duration": 0.25, "easing": "ease"}
         These are the defaults.
         """
+
+        #TODO -- Add a logging function that documents all API call inputs through the handle_ai_command() and stores into ~/logs
+
         expression_name = data.get("emotion", "neutral")
         if expression_name is None:
             return False
@@ -414,7 +417,7 @@ class FaceScene:
             if attr in ("position", "shape_state"):
                 continue
             setattr(obj, attr, value)
-
+    
         if shape_state is not None:
             obj.set_shape_state(shape_state, duration, easing)
         else:

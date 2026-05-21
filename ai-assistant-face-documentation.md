@@ -1,1024 +1,370 @@
-# Robot Face Display System — Design Document
+# AI Assistant Face Documentation
 
-## 1. Project Goal
+## Summary
 
-Create a lightweight face display program that runs under Xorg on a Unitree G1 robot. The program receives input from another process and displays an animated face on a screen in real time.
+`ai-assistant-face` is currently a small Python and pygame prototype for drawing animated face objects as polygon meshes. The app loads expression data from JSON, creates a fixed pool of `FaceObject` instances, applies the default expression, and then runs a pygame frame loop that updates and renders active objects.
 
-The system should behave conceptually like a simplified 2D animation/compositing engine, similar to After Effects:
+The codebase is not yet the larger robot display system described in the old design document. IPC, socket input, lifecycle state machines, shape resampling, opacity, deployment scripts, and a dedicated renderer draw API are not implemented yet. Pretending otherwise would be bad documentation, and bad documentation is how future you gets ambushed by past you.
 
-- Multiple visual objects/layers
-- Mesh-based shapes made from vertices
-- Named visual states such as `neutral`, `exclamation`, `circle`, `heart`, `happy`, `alert`, etc.
-- Smooth interpolation between states
-- Object origins/transforms for movement, scaling, and rotation
-- Objects that can appear, disappear, or be reused during real-time animation
-- External control through messages from another program
-
-The renderer should be computationally lightweight and reliable. The first version should prioritize correctness, clarity, and testability over premature optimization.
-
----
-
-## 2. Recommended Technology Stack
-
-### Prototype Stack
-
-Use:
-
-- **Python**
-- **pygame**
-- **Unix domain socket** or **UDP localhost** for IPC
-- **JSON** for message format
-- **Xorg fullscreen window** for display
-
-Reasoning:
-
-- Python is fast enough for a 2D face renderer at 30–60 FPS.
-- pygame is simple for fullscreen drawing, input handling, frame timing, and polygon rendering.
-- JSON messages are easy to debug manually.
-- Unix sockets are efficient for local process-to-process communication.
-- The system can later be ported to C++/SDL2 if profiling proves Python is too slow.
-
-### Production Candidate Stack
-
-Use:
-
-- **C++**
-- **SDL2**
-- Same JSON or binary-compatible message format
-- Same conceptual data model
-
-Avoid starting with raw Xlib unless there is a very specific requirement. Raw Xlib will slow development without providing meaningful benefit for this project’s first version.
-
----
-
-## 3. Core Architectural Model
-
-The system is a small 2D scene engine.
+## Current File Map
 
 ```text
-FaceApplication
-  ├─ IPCServer
-  ├─ FaceScene
-  │   └─ FaceObject[]
-  │       ├─ Mesh
-  │       ├─ Transform
-  │       ├─ ShapeStates
-  │       ├─ AnimationController
-  │       └─ LifecycleState
-  ├─ Renderer
-  └─ MainLoop
+MainLoop.py
+  imports Renderer, FaceObject, FaceScene, Transform, Button
+  loads dataLibrary/expressions.json
+  creates Renderer
+  creates FaceObject pool
+  creates FaceScene
+  applies default expression
+  owns pygame event loop
+  draws active objects with pygame.draw.polygon
+
+FaceScene.py
+  defines Transform
+  defines Vert
+  defines FaceObject
+  defines FaceScene
+  imports animation as anim
+
+Renderer.py
+  wraps pygame.init()
+  creates pygame display surface
+  creates font list
+  creates pygame clock
+
+UI.py
+  defines Button
+  handles mouse hover/click state
+  draws button rectangle and label
+
+animation.py
+  defines Hover animation class
+
+dataLibrary/expressions.json
+  defines expression states and default state
+
+dataLibrary/anims.json
+  defines intended animation names
+  currently not loaded by runtime code
 ```
 
----
+## Runtime Flow
 
-## 4. Core Concepts
-
-## 4.1 Face Scene
-
-The `FaceScene` owns all active visual objects.
-
-Responsibilities:
-
-- Store all face objects
-- Route state-change commands to the correct object
-- Update all animations each frame
-- Ask the renderer to draw objects in layer order
-- Maintain global face state if needed
-
-Example:
+The current runtime path starts in `MainLoop.py`.
 
 ```text
-FaceScene
-  - left_eye
-  - right_eye
-  - mouth
-  - left_brow
-  - right_brow
-  - emotion_symbol
-  - cheek_marks
+Python executes MainLoop.py
+  -> Renderer is constructed with 720x720 pygame.RESIZABLE display
+  -> dataLibrary/expressions.json is loaded
+  -> main_loop(5) is called immediately
+  -> five FaceObject instances are created and stored in objPool
+  -> FaceScene is created with objPool and expression_data
+  -> FaceScene.set_expression(default_state, duration=0) is applied
+  -> pygame loop starts
+      -> clock ticks at 60 FPS target
+      -> pygame events are read
+      -> screen is cleared to black
+      -> FaceScene.update(dt) is called
+      -> active objects are drawn as filled polygons
+      -> vertex debug labels are drawn when enabled
+      -> debug Button is drawn and updated
+      -> pygame.display.flip() presents the frame
 ```
 
----
+`main_loop(5)` is called at module import time, so importing `MainLoop.py` also starts the application. That is convenient for a quick prototype and lousy for tests or reuse.
 
-## 4.2 Face Object
+## Implemented Architecture
 
-A `FaceObject` is one drawable animated item.
+### MainLoop.py
 
-Examples:
+`MainLoop.py` is the real application entry point. It owns global setup and most runtime behavior:
 
-- Left eye
-- Right eye
-- Mouth
-- Eyebrow
-- Heart symbol
-- Exclamation mark
-- Blush mark
-- UI-style status icon
+- sets `BASE_DIR` from the file location;
+- sets `RESOLUTION` to `[720, 720]`;
+- constructs a `Renderer`;
+- loads `dataLibrary/expressions.json`;
+- stores objects in the global `objPool`;
+- stores the active `FaceScene` in the global `face_scene`;
+- creates a debug `Button` labeled `Cycle State`;
+- creates five `FaceObject` instances;
+- applies the default expression from JSON;
+- runs the pygame frame loop;
+- renders polygons directly with `pygame.draw.polygon`.
 
-Each object has:
+The debug button calls `cycle_all_shape_states()`, which cycles each active object through the hardcoded shape states on its `FaceObject`.
+
+`apply_face_state()` is present as a helper for applying the default state, but the normal startup path now uses `face_scene.set_expression(...)`.
+
+### Renderer.py
+
+`Renderer` is a thin pygame wrapper. It stores:
+
+- `RESOLUTION`;
+- `OBJBANK`;
+- `DISPLAY`;
+- `fonts`;
+- `screen`;
+- `clock`;
+- `running`.
+
+It initializes pygame, creates the display surface, creates a default Arial font, and creates the frame clock. It does not currently provide draw methods for face objects. Rendering still happens in `MainLoop.py`.
+
+### UI.py
+
+`Button` is a small pygame UI component used by the debug control in `MainLoop.py`.
+
+It stores a `pygame.Rect`, text, font index, font color, screen reference, hover state, and click callback. On each draw, it:
+
+- reads mouse position;
+- checks hover state;
+- scans events for mouse button down;
+- calls `on_clicked` when clicked;
+- draws a rectangle;
+- draws its text label.
+
+### FaceScene.py
+
+`FaceScene.py` contains the core face model.
+
+`Transform` stores screen-space placement data:
+
+- `origin_position`;
+- `scale`;
+- `rotation`.
+
+`Vert` stores a single mesh vertex:
+
+- current `position`;
+- `connected_verts`;
+- `target_position`.
+
+It can draw its own debug index through `draw_vert_debug()`.
+
+`FaceObject` is the drawable animated shape. It stores identity, visibility, layer, color, transform, aspect ratio, vertex count, debug options, transition timing, and shape state data.
+
+Supported shape states are hardcoded:
 
 ```text
-FaceObject
-  - id
-  - visible
-  - active
-  - layer_index
-  - transform
-  - mesh
-  - shape_states
-  - current_state
-  - target_state
-  - animation_controller
-  - style
+Circle
+Square
+Rectangle
+Triangle
 ```
 
----
+The shape state methods calculate each vertex target position:
 
-## 4.3 Mesh
+- `circleOrient()`;
+- `rectangleOrient()`;
+- `triangleOrient()`;
+- `orientVertsAlongPolygon()`.
 
-A mesh is a collection of 2D vertices. For the first version, each mesh can be rendered as a filled polygon or polyline.
+Shape animation is handled by:
 
-```text
-Mesh
-  - vertices: Vec2[]
-  - draw_mode: filled_polygon | polyline | points
-```
+- `set_shape_state()`;
+- `apply_shape_state()`;
+- `update_shape_state()`;
+- `update()`;
+- `lerp()`;
+- `ease_value()`.
 
-For simple face rendering, start with filled polygons and polylines. Triangulation can be added later if needed.
-
----
-
-## 4.4 Shape States
-
-A shape state is a named set of vertex positions for a given object.
-
-Example:
-
-```json
-{
-  "object_id": "left_eye",
-  "states": {
-    "neutral": [[-20, -5], [20, -5], [20, 5], [-20, 5]],
-    "circle": [[0, -20], [14, -14], [20, 0], [14, 14], [0, 20], [-14, 14], [-20, 0], [-14, -14]],
-    "closed": [[-20, 0], [20, 0]]
-  }
-}
-```
-
-Important: for clean interpolation, states should usually share the same vertex count and vertex meaning.
-
-Good:
-
-```text
-neutral: 32 vertices
-happy:   32 vertices
-angry:   32 vertices
-```
-
-Bad:
-
-```text
-neutral: 8 vertices
-happy:   31 vertices
-angry:   52 vertices
-```
-
-Different vertex counts can be supported later using resampling.
-
----
-
-## 4.5 Transform
-
-Every object has an origin and transform.
-
-```text
-Transform
-  - position: Vec2
-  - origin: Vec2
-  - rotation_degrees: float
-  - scale: Vec2
-  - opacity: float
-```
-
-Transforms should be animated separately from mesh deformation.
-
-This gives three animation layers:
-
-1. **Shape animation** — vertex morphing
-2. **Transform animation** — position, rotation, scale, opacity
-3. **Lifecycle animation** — spawn, despawn, fade, pop, squash
-
----
-
-## 5. Interpolation System
-
-## 5.1 Basic Vertex Lerp
-
-The core interpolation operation:
-
-```text
-current_vertex = lerp(source_vertex, target_vertex, t)
-```
-
-Where:
-
-```text
-t = 0.0 → source state
-t = 1.0 → target state
-```
-
-Formula:
-
-```text
-lerp(a, b, t) = a + (b - a) * t
-```
-
-Each frame:
-
-```text
-elapsed += delta_time
-t = elapsed / duration
-t = clamp(t, 0.0, 1.0)
-t = easing(t)
-current_vertices[i] = lerp(start_vertices[i], target_vertices[i], t)
-```
-
----
-
-## 5.2 Easing
-
-Do not use only linear interpolation. It will feel robotic and cheap.
-
-Recommended easing functions:
+Supported easing names are:
 
 ```text
 linear
-smoothstep
-ease_in
-ease_out
-ease_in_out
-ease_out_back
-ease_out_elastic
+ease-in
+ease-out
+ease
 ```
 
-Start with:
+`ease` is smoothstep.
+
+`FaceScene` coordinates expression changes across the object pool. It stores:
+
+- `objects`;
+- `expression_data`;
+- `current_expression`.
+
+Its main command path is:
 
 ```text
-smoothstep
+handle_ai_command(data)
+  -> reads data["emotion"], data["duration"], data["easing"]
+  -> calls set_expression(...)
+
+set_expression(expression_name, duration, easing)
+  -> looks up expression_data["states"][expression_name]
+  -> iterates object ids in the expression
+  -> calls apply_object_state(...)
+
+apply_object_state(obj, state_data, duration, easing)
+  -> applies position to obj.transform.origin_position
+  -> applies other JSON fields using setattr()
+  -> applies or recalculates shape state
 ```
 
-Formula:
+### animation.py
 
-```text
-smoothstep(t) = t * t * (3 - 2 * t)
-```
+`animation.py` currently defines `Hover`.
 
----
+`Hover` is written as an instance-based animation class. It expects to store:
 
-## 5.3 Vertex Correspondence Rule
+- target object;
+- base y position;
+- amplitude;
+- speed;
+- elapsed time.
 
-The most important visual rule:
+Its `update()` method changes the object's y position using a sine wave, then reapplies the object's current shape state so vertex targets follow the new transform.
 
-> Corresponding vertices must represent corresponding parts of the shape.
+The runtime does not currently instantiate `Hover` objects. `FaceScene.update()` calls `getattr(anim, "Hover").update(obj, dt=dt)`, which treats `Hover.update()` like a static method even though it depends on instance fields.
 
-Example:
+## Data Model
 
-```text
-vertex 0 = top point
-vertex 1 = upper-right contour
-vertex 2 = right contour
-vertex 3 = lower-right contour
-...
-```
+### dataLibrary/expressions.json
 
-If vertex 0 means “top of heart” in one state and “left side of exclamation mark” in another, the morph will look bad.
+`expressions.json` is the only JSON file currently loaded by runtime code.
 
----
-
-## 5.4 Nearest-Neighbor Mapping
-
-A proposed idea was to use “sample nearest” so vertices snap or map to the nearest next-state vertex.
-
-This can be useful, but it should not be the main runtime method.
-
-Nearest-neighbor mapping:
-
-```text
-for each source vertex:
-    find closest target vertex
-    map source_index → target_index
-```
-
-Problems:
-
-- Vertices can cross paths.
-- Multiple source vertices can choose the same target vertex.
-- Silhouettes can collapse.
-- Complex shapes can tangle.
-- Results can change unpredictably if recomputed during runtime.
-
-Recommended use:
-
-- Use nearest-neighbor as an **authoring/preprocessing helper**.
-- Save the resulting mapping.
-- Runtime should use deterministic saved mappings, not search every frame.
-
----
-
-## 5.5 Better Solution: Outline Resampling
-
-For shapes with different vertex counts, use outline resampling.
-
-Process:
-
-```text
-1. Take source outline.
-2. Take target outline.
-3. Resample both outlines to N evenly spaced points.
-4. Ensure both outlines use the same winding direction.
-5. Choose a consistent starting point.
-6. Lerp point[i] to point[i].
-```
-
-Example:
-
-```text
-circle → 64 points
-heart → 64 points
-exclamation → 64 points
-```
-
-Then morphing becomes stable:
-
-```text
-circle_points[i] → heart_points[i]
-```
-
-For closed shapes:
-
-```text
-sample clockwise around perimeter
-normalize starting point
-lerp point[i] to point[i]
-```
-
-For open shapes, like a mouth curve:
-
-```text
-sample left-to-right
-lerp point[i] to point[i]
-```
-
----
-
-## 6. Object Lifecycle System
-
-Objects may be created or destroyed for real-time animations.
-
-However, the first implementation should avoid constant allocation/deallocation during animation.
-
-Use an object pool.
-
-Instead of:
-
-```text
-create object → animate → destroy object
-```
-
-Use:
-
-```text
-inactive pooled object → activate → animate in → animate out → mark inactive
-```
-
-Benefits:
-
-- Avoids garbage collection spikes
-- Avoids runtime allocation jitter
-- Makes behavior more predictable
-- Easier to debug
-
-Object lifecycle states:
-
-```text
-inactive
-spawning
-active
-despawning
-```
-
-Spawn animation examples:
-
-```text
-scale: 0.0 → 1.0
-opacity: 0.0 → 1.0
-```
-
-Despawn animation examples:
-
-```text
-scale: 1.0 → 0.0
-opacity: 1.0 → 0.0
-```
-
----
-
-## 7. IPC / External Control
-
-The face program should receive commands from another program.
-
-Recommended first version:
-
-- Unix domain socket
-- JSON messages
-
-Socket path:
-
-```text
-/tmp/robot_face.sock
-```
-
-Alternative:
-
-- UDP on `127.0.0.1`
-- ROS 2 topic if integrating deeply into the robot stack
-
----
-
-## 7.1 Message Types
-
-### Set Object State
+Top-level fields:
 
 ```json
 {
-  "type": "set_state",
-  "target": "mouth",
-  "state": "happy",
-  "duration": 0.18,
-  "easing": "ease_out"
+  "version": 1,
+  "default_state": "neutral",
+  "states": {}
 }
 ```
 
-### Set Full Face Expression
+`default_state` names the expression applied during startup.
+
+`states` maps expression names to object state dictionaries. Object ids are numeric indexes encoded as strings:
 
 ```json
 {
-  "type": "set_expression",
-  "expression": "surprised",
-  "duration": 0.25,
-  "easing": "ease_out_back"
-}
-```
-
-### Spawn Symbol
-
-```json
-{
-  "type": "spawn",
-  "object_type": "symbol",
-  "state": "heart",
-  "position": [200, 100],
-  "duration": 0.3
-}
-```
-
-### Despawn Object
-
-```json
-{
-  "type": "despawn",
-  "target": "emotion_symbol",
-  "duration": 0.2
-}
-```
-
-### Set Transform
-
-```json
-{
-  "type": "set_transform",
-  "target": "left_eye",
-  "position": [-100, -40],
-  "scale": [1.2, 1.2],
-  "rotation": 0,
-  "duration": 0.15,
-  "easing": "smoothstep"
-}
-```
-
----
-
-## 8. Data File Format
-
-The face rig should be described in external JSON files so the art/animation can be changed without rewriting code.
-
-Example file:
-
-```json
-{
-  "scene": {
-    "width": 800,
-    "height": 480,
-    "background": [0, 0, 0]
-  },
-  "objects": [
-    {
-      "id": "left_eye",
-      "layer": 10,
-      "draw_mode": "filled_polygon",
-      "style": {
-        "fill": [255, 255, 255],
-        "stroke": null,
-        "opacity": 1.0
-      },
-      "transform": {
-        "position": [-120, -40],
-        "origin": [0, 0],
-        "rotation": 0,
-        "scale": [1, 1]
-      },
-      "states": {
-        "neutral": [[-30, -8], [30, -8], [30, 8], [-30, 8]],
-        "wide": [[-30, -20], [30, -20], [30, 20], [-30, 20]],
-        "closed": [[-30, -2], [30, -2], [30, 2], [-30, 2]]
-      }
-    }
-  ],
-  "expressions": {
-    "neutral": {
-      "left_eye": "neutral",
-      "right_eye": "neutral",
-      "mouth": "neutral"
+  "neutral": {
+    "0": {
+      "position": [180.0, 360.0],
+      "shape_state": "Circle",
+      "active": true,
+      "anim": "eye_neutral"
     },
-    "surprised": {
-      "left_eye": "wide",
-      "right_eye": "wide",
-      "mouth": "circle"
+    "1": {
+      "position": [540.0, 360.0],
+      "shape_state": "Circle",
+      "active": true,
+      "anim": "eye_neutral"
     }
   }
 }
 ```
 
----
-
-## 9. Runtime Loop
-
-The main loop should be simple and predictable.
+The current expression library defines:
 
 ```text
-initialize window
-load rig JSON
-start IPC server
-
-while running:
-    delta_time = clock.tick()
-
-    read pending IPC messages
-    apply commands to scene
-
-    scene.update(delta_time)
-    renderer.clear()
-    renderer.draw(scene)
-    renderer.present()
+neutral
+happy
+sad
+excited
+thinking
 ```
 
-Target frame rate:
+Only `neutral` currently contains object state data. The other expressions exist as empty placeholders.
+
+Expression state data can currently set:
+
+- `position`, applied to `obj.transform.origin_position`;
+- `shape_state`, applied through `obj.set_shape_state(...)`;
+- `active`, or any other attribute, applied through direct `setattr()`.
+
+That direct `setattr()` behavior is flexible, sure, but it is also a foot-cannon. A typo in JSON can silently create the wrong runtime state.
+
+### dataLibrary/anims.json
+
+`anims.json` defines intended animation mappings:
+
+```json
+{
+  "eye_neutral": ["anim.Hover", "anim.Blink"],
+  "eye_thinking": ["anim.Hover", "anim.Think"],
+  "eye_look_left": ["anim.Look"],
+  "eye_look_right": ["anim.Look"]
+}
+```
+
+This file is not currently loaded or used by the runtime. It also references animation classes or functions that do not exist yet: `Blink`, `Think`, and `Look`.
+
+## Rendering Behavior
+
+Rendering is currently immediate-mode pygame drawing inside `MainLoop.py`.
+
+For each active object:
 
 ```text
-60 FPS preferred
-30 FPS acceptable
+points = [vert.position for vert in obj.verts]
+pygame.draw.polygon(ren.screen, obj.color, points)
 ```
 
-At 60 FPS, the frame budget is:
-
-```text
-16.6 ms per frame
-```
-
-This system should comfortably fit inside that if kept simple.
-
----
-
-## 10. Renderer Requirements
-
-The first renderer should support:
-
-- Fullscreen Xorg window
-- Filled polygon drawing
-- Polyline drawing
-- Layer sorting
-- Opacity if available
-- Basic transforms
-- Screen-space coordinate conversion
-
-Coordinate system:
-
-```text
-Scene origin: center of screen
-X+: right
-Y+: down or up, but choose one and stay consistent
-```
-
-Recommended:
-
-```text
-Internal coordinates: center-origin, Y up
-pygame screen coordinates: top-left origin, Y down
-```
-
-Conversion:
-
-```text
-screen_x = screen_width / 2 + world_x
-screen_y = screen_height / 2 - world_y
-```
-
----
-
-## 11. State Machine
-
-Each object should have an independent animation state.
-
-```text
-ObjectAnimation
-  - start_vertices
-  - target_vertices
-  - current_vertices
-  - elapsed
-  - duration
-  - easing
-  - active
-```
-
-When a new state command arrives:
-
-```text
-start_vertices = current_vertices
-target_vertices = state_vertices[target_state]
-elapsed = 0
-duration = command.duration
-easing = command.easing
-active = true
-```
-
-This allows interruptions.
-
-Example:
-
-```text
-neutral → happy starts
-halfway through, alert command arrives
-current halfway shape becomes new start
-current → alert begins immediately
-```
-
-This is important for realtime robot responsiveness.
-
----
-
-## 12. Performance Expectations
-
-The face renderer should not be computationally heavy.
-
-Likely costs:
-
-```text
-JSON parse: small
-IPC read: small
-Vertex interpolation: tiny
-2D polygon drawing: small
-Display refresh: dominant visible latency
-```
-
-C may reduce computation time, but it probably will not meaningfully reduce perceived response time at this stage.
-
-The display refresh and animation duration matter more than raw language speed.
-
-Use Python first. Profile before rewriting.
-
----
-
-## 13. When to Move from Python to C++
-
-Port to C++/SDL2 only if one or more of these becomes true:
-
-- Python process uses too much CPU
-- Python stutters during animation
-- Startup time is unacceptable
-- Garbage collection causes visible hitches
-- Deployment dependencies become annoying
-- The robot compute environment cannot comfortably run the Python stack
-- You need tighter control over rendering and memory
-
-Do not port because of instinct alone. Measure first.
-
----
-
-## 14. Minimum Viable Prototype
-
-The first milestone should be extremely small.
-
-### MVP Goal
-
-Display one morphing polygon under Xorg.
-
-### MVP Features
-
-- Open a pygame window
-- Draw one object
-- Define two shape states
-- Interpolate between them
-- Trigger state change with a keyboard key
-
-Example:
-
-```text
-Press 1 → neutral
-Press 2 → circle
-Press 3 → heart
-```
-
-No sockets yet. No object pooling yet. No complex editor.
-
----
-
-## 15. Implementation Phases
-
-## Phase 1 — Single Object Morph
-
-Build:
-
-- `Vec2`
-- `lerp`
-- `smoothstep`
-- `FaceObject`
-- `ShapeState`
-- pygame render loop
-
-Success condition:
-
-- One polygon smoothly morphs between two states.
-
----
-
-## Phase 2 — Multiple Objects
-
-Build:
-
-- `FaceScene`
-- Layer sorting
-- Multiple face parts
-- Basic transforms
-
-Success condition:
-
-- Left eye, right eye, and mouth animate independently.
-
----
-
-## Phase 3 — Expression Presets
-
-Build:
-
-- Expression dictionary
-- `set_expression(expression_name)`
-
-Success condition:
-
-- One command changes multiple objects together.
-
-Example:
-
-```text
-neutral → surprised
-surprised → happy
-happy → thinking
-```
-
----
-
-## Phase 4 — IPC Input
-
-Build:
-
-- Unix socket server
-- JSON message parser
-- Command router
-
-Success condition:
-
-- External program can send messages that change face state.
-
-Example:
-
-```bash
-echo '{"type":"set_expression","expression":"happy","duration":0.2}' | socat - UNIX-CONNECT:/tmp/robot_face.sock
-```
-
----
-
-## Phase 5 — Object Pooling and Spawn Effects
-
-Build:
-
-- Object pool
-- Spawn/despawn lifecycle
-- Animated symbols
-
-Success condition:
-
-- Heart/exclamation/circle symbols can appear and disappear without new allocation each time.
-
----
-
-## Phase 6 — Shape Resampling
-
-Build:
-
-- Resample closed outlines to N points
-- Resample open curves to N points
-- Normalize winding direction
-- Normalize starting point
-
-Success condition:
-
-- Different authored shapes can morph cleanly after preprocessing.
-
----
-
-## Phase 7 — Robot Deployment Hardening
-
-Build:
-
-- Fullscreen launch script
-- systemd service
-- watchdog behavior
-- fallback idle face
-- safe error face
-- logging
-- FPS/CPU monitor
-
-Success condition:
-
-- Face app starts automatically and keeps running on robot boot.
-
----
-
-## 16. File Structure
-
-Recommended project layout:
-
-```text
-robot_face/
-  main.py
-  face_scene.py
-  face_object.py
-  animation.py
-  renderer_pygame.py
-  ipc_server.py
-  easing.py
-  geometry.py
-  object_pool.py
-  data/
-    rig.json
-    expressions.json
-  tools/
-    send_face_command.py
-    resample_shape.py
-  tests/
-    test_lerp.py
-    test_resample.py
-```
-
----
-
-## 17. Key Classes
-
-### Vec2
-
-```text
-Vec2
-  - x
-  - y
-```
-
-Operations:
-
-```text
-add
-subtract
-multiply scalar
-lerp
-length
-distance
-```
-
----
-
-### FaceObject
-
-```text
-FaceObject
-  - id
-  - layer
-  - visible
-  - active
-  - transform
-  - states
-  - current_vertices
-  - animation
-  - style
-
-methods:
-  - set_state(state_name, duration, easing)
-  - update(delta_time)
-  - get_transformed_vertices()
-```
-
----
-
-### FaceScene
-
-```text
-FaceScene
-  - objects
-  - expressions
-
-methods:
-  - update(delta_time)
-  - set_object_state(target, state, duration, easing)
-  - set_expression(expression, duration, easing)
-  - spawn_object(type, state, position)
-  - despawn_object(target)
-```
-
----
-
-### IPCServer
-
-```text
-IPCServer
-  - socket_path
-  - pending_messages
-
-methods:
-  - poll()
-  - get_commands()
-```
-
----
-
-## 18. Design Rules
-
-1. **Same topology first.** Do not start with complex vertex matching.
-2. **Animation must be interruptible.** New state changes should start from the current visual shape.
-3. **Do not allocate constantly during animation.** Use object pooling for spawned effects.
-4. **Keep rendering separate from animation logic.** This makes porting easier.
-5. **Keep data external.** Shape states should live in JSON, not hardcoded forever.
-6. **Use nearest-neighbor only as preprocessing.** Do not rely on runtime nearest mapping.
-7. **Measure before optimizing.** Python is probably fast enough for v1.
-8. **Avoid raw Xlib for v1.** It is unnecessary friction.
-9. **Keep robot-facing behavior safe.** If input stops, the face should gracefully idle instead of freezing in a broken state.
-
----
-
-## 19. Immediate Next Coding Task
-
-Start with this exact task:
-
-> Create a Python pygame program that draws one filled polygon and morphs it between `neutral`, `circle`, and `heart` states when number keys are pressed.
-
-Do not start with sockets. Do not start with robot deployment. Do not start with C.
-
-First prove the visual morph system.
-
-Minimum code requirements:
-
-- `main.py`
-- hardcoded shape dictionary
-- `lerp()` function
-- `smoothstep()` function
-- animation duration variable
-- current/start/target vertex arrays
-- keyboard-triggered state changes
-
-Once that works, move to JSON-loaded shapes.
-
----
-
-## 20. Final Recommendation
-
-Build this as a small 2D animation engine:
-
-```text
-Python + pygame prototype
-JSON rig/state data
-Unix socket control
-interruptible vertex morphs
-object pooling for temporary symbols
-resampling later
-C++/SDL2 port only if profiling demands it
-```
-
-The main engineering risk is not Xorg overhead or Python speed. The main risk is designing sloppy state data and vertex correspondence. Solve the data model cleanly first.
-
+If `vert_debug` is enabled, every vertex draws its numeric index using the renderer font list.
+
+Coordinates are screen-space values. The current implementation does not use a center-origin world coordinate system, camera transform, opacity, stroke style, draw modes, or layer sorting.
+
+## Shape Animation Behavior
+
+Each `FaceObject` owns a fixed list of `Vert` instances. `vert_count` is set when the object is constructed. In the current startup path, every object gets `32` vertices.
+
+When a shape state is applied:
+
+1. the target state name is validated against `shape_state_lib`;
+2. target positions are recalculated from the object's transform;
+3. if duration is `0`, current positions snap to targets;
+4. otherwise, `in_transition` is set to `True`;
+5. each update lerps current vertex positions toward target positions;
+6. movement stops when all vertices are close enough to their targets.
+
+During transitions, `debug_movement()` changes the object color toward red/green. Once settled, the object becomes green.
+
+## Current Limitations
+
+The current implementation does not include:
+
+- IPC or socket command input;
+- ROS integration;
+- object spawn/despawn lifecycle states;
+- actual runtime object allocation and release;
+- shape data loaded from JSON;
+- arbitrary authored mesh states;
+- shape resampling;
+- nearest-neighbor vertex mapping;
+- opacity;
+- stroke rendering;
+- layer sorting;
+- fullscreen robot deployment;
+- watchdog behavior;
+- logging to `logs`;
+- automated tests.
+
+The code does preallocate five `FaceObject` instances, so there is an object pool in the loose sense. There is not yet a full object pooling lifecycle with inactive, spawning, active, and despawning states.
+
+## Areas of improvement
+
+- Fix the animation system. `FaceScene.update()` currently calls `Hover.update()` as if it were static, while `Hover` expects instance state such as `time`, `base_y`, `amplitude`, and `speed`.
+- Wire up or remove `dataLibrary/anims.json`. It currently references `anim.Blink`, `anim.Think`, and `anim.Look`, which do not exist.
+- Resolve animation naming drift. Expression data uses `"anim"`, `FaceObject` has `curr_anim`, and neither path currently drives animation.
+- Move polygon rendering out of `MainLoop.py` and into `Renderer`, so rendering and application control are not tangled together.
+~~- Guard startup with `if __name__ == "__main__":` so importing `MainLoop.py` does not launch the pygame app.~~
+- Replace broad `setattr()` from JSON with explicit validation for supported expression fields.
+- Fix default mutable constructor arguments such as `origin_position=[540,540]`, `aspect_ratio=[1,1]`, and UI rect defaults.
+- Clarify object pooling. The code preallocates objects, but spawn/despawn lifecycle behavior is not implemented.
+- Add tests for expression application, shape state transitions, invalid shape states, and animation update behavior.
+- Clean up stale design claims as implementation changes, especially around IPC, deployment, and renderer responsibilities.
+
+## Practical Next Steps
+
+The next useful implementation pass should fix the animation contract before adding more features. A reasonable order is:
+
+1. Add an explicit animation instance registry on each `FaceObject` or in `FaceScene`.
+2. Load or delete `anims.json`, instead of leaving it as misleading configuration.
+3. Move object drawing into `Renderer`.
+4. ~~ Add a `__main__` guard.~~
+5. Add focused tests around expression application and shape transitions.
+
+After that, the project can decide whether the next milestone is richer local animation, JSON-authored shape meshes, or external command input. Right now the foundation is a prototype polygon face renderer, and that is fine, as long as the documentation says so plainly.

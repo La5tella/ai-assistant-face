@@ -1,0 +1,6 @@
+{
+    "eye_neutral": ["anim.Hover", "anim.Blink"],
+    "eye_thinking": ["anim.Hover", "anim.Think"],
+    "eye_look_left": ["anim.Look"],
+    "eye_look_right": ["anim.Look"]
+}

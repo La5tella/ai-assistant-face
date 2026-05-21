@@ -18,7 +18,7 @@ ren = Renderer(
 objPool = []
 face_scene = None
 
-with open(BASE_DIR / "ExpressionLibrary/expressions.json", "r") as file:
+with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
     expression_data = json.load(file)
 
 
@@ -102,5 +102,5 @@ def apply_face_state():
 
         
 
-
-main_loop(5)
+if __name__ == "__main__":
+    main_loop(5)
