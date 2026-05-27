@@ -39,6 +39,7 @@ class Vert:
         target_position: Destination position used when easing shape states.
         """
 
+        self.local_position = position or [0, 0]
         self.position = position or [0, 0]
         self.connected_verts = connected_verts or []
         self.target_position = target_position or []
@@ -100,9 +101,14 @@ class FaceObject:
         self.ease_type = "ease"
         self.in_transition = False
 
-        self.anim = Animation(self)
+        
+        
         self._curr_anim = None
         self.anim_dict = anim_dict
+        self.action_index = 0
+        self.action_queue = []
+        self.anim = Animation(self, anim_dict["timings"])
+        
 
         self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
         self._shape_state = None
@@ -123,8 +129,13 @@ class FaceObject:
         """
         This should update the animation's time value
         """
-        self.anim.time = 0
-        pass
+        if value != None:
+            self.action_queue = self.anim_dict["anims"][value]
+            self.action_index = 0
+            self.anim.update_curr_action(self.action_queue[self.action_index])
+            
+        self._curr_anim = value
+        
     
     @property
     def shape_state(self):
@@ -137,7 +148,7 @@ class FaceObject:
         """
         if value not in self.shape_state_lib:
             raise ValueError(f"Invalid shape_state: {value}")
-
+        
         self.set_shape_state(value)
         self.anim.refresh_obj_data()
 
@@ -156,7 +167,7 @@ class FaceObject:
             return
 
         radius = self.transform.scale
-        center_x, center_y = self.transform.origin_position
+        center_x, center_y = [0,0]
         rotation = self.transform.rotation
         cos_rotation = math.cos(rotation)
         sin_rotation = math.sin(rotation)
@@ -224,16 +235,16 @@ class FaceObject:
 
         corners = [
             [
-            self.transform.origin_position[0]+(width * .5),self.transform.origin_position[1]-(height * .5)
+            (width * .5),-(height * .5)
             ],
             [
-            self.transform.origin_position[0]-(width * .5),self.transform.origin_position[1]-(height * .5)
+            -(width * .5),-(height * .5)
             ],
             [
-            self.transform.origin_position[0]-(width * .5),self.transform.origin_position[1]+(height * .5)
+            -(width * .5),+(height * .5)
             ],
             [
-            self.transform.origin_position[0]+(width * .5),self.transform.origin_position[1]+(height * .5)
+            +(width * .5),+(height * .5)
             ]
         ]
         """
@@ -249,9 +260,9 @@ class FaceObject:
         half_width = radius * math.sqrt(3) * 0.5
         half_height = radius * 0.5
         corners = [
-            [self.transform.origin_position[0] + half_width, self.transform.origin_position[1] - half_height],
-            [self.transform.origin_position[0] - half_width, self.transform.origin_position[1] - half_height],
-            [self.transform.origin_position[0], self.transform.origin_position[1] + radius],
+            [half_width,-half_height],
+            [-half_width,-half_height],
+            [0,radius],
                 ]
 
         self.orientVertsAlongPolygon(corners)
@@ -276,7 +287,7 @@ class FaceObject:
 
         if self.transition_duration == 0:
             for vert in self.verts:
-                vert.position = vert.target_position.copy()
+                vert.local_position = vert.target_position.copy()
             self.in_transition = False
         else:
             self.in_transition = True
@@ -311,7 +322,7 @@ class FaceObject:
                 
             if self.transition_duration == 0:
                 for vert in self.verts:
-                    vert.position = vert.target_position.copy()
+                    vert.local_position = vert.target_position.copy()
                 self.in_transition = False
                 self.debug_movement(1)
                 return
@@ -323,22 +334,26 @@ class FaceObject:
             self.in_transition = False
 
             for vert in self.verts:
-                if vert.position != vert.target_position:
-                        vert.position =[self.lerp(vert.position[0],vert.target_position[0], t), self.lerp(vert.position[1],vert.target_position[1], t)] 
+                if vert.local_position != vert.target_position:
+                        vert.local_position =[self.lerp(vert.local_position[0],vert.target_position[0], t), self.lerp(vert.local_position[1],vert.target_position[1], t)] 
                         dx = vert.target_position[0] - vert.position[0]
                         dy = vert.target_position[1] - vert.position[1]
 
                         if math.sqrt(dx * dx + dy * dy) < .01:
-                            vert.position = vert.target_position.copy()
+                            vert.local_position = vert.target_position.copy()
                         else:
                             self.in_transition = True
-
-            self.debug_movement(t)
+                        
+                self.debug_movement(t)
+       
     #---------------End Shape State Orientation Functions---------------
     #------------------------Animation Functions------------------------
     def update(self, dt):
+        
         self.update_shape_state(dt=dt)
         self.add_anim_movement(dt)
+        self.update_global_position()
+        
                     
     def lerp(self, a, b, t):
         return a + (b - a) * t
@@ -363,7 +378,12 @@ class FaceObject:
                 return t
             
     def add_anim_movement(self, dt):
-        self.anim.update(anim_type=self.curr_anim,dt=dt)
+        self.anim.update(dt=dt)
+    
+    def update_global_position(self):
+        for vert in self.verts:
+            vert.position[0] = vert.local_position[0] + self.transform.origin_position[0]
+            vert.position[1] = vert.local_position[1] + self.transform.origin_position[1]
     #----------------------End Animation Functions---------------------- 
 
 
@@ -382,6 +402,7 @@ class FaceScene:
         self.objects = objects
         self.expression_data = expression_data
         self.current_expression = None
+
 
     def handle_ai_command(self, data):
         """Translate AI handler data into a face expression change.
@@ -430,16 +451,16 @@ class FaceScene:
 
     def apply_object_state(self, obj, state_data, duration=0.25, easing="ease"):
         """Apply one object's state data and start its shape animation if needed."""
-        shape_state = state_data.get("shape_state") 
-
-        if "position" in state_data:
-            obj.transform.origin_position = state_data["position"]
+        shape_state = state_data.get("shape_state")   
 
         for attr, value in state_data.items():
-            if attr in ("position", "shape_state"):
-                continue
-            setattr(obj, attr, value)
-    
+            if attr == "position":
+                obj.transform.origin_position = value #<<<<<<<
+            elif attr == 'anim':
+                obj.curr_anim = value
+            else:
+                setattr(obj, attr, value)
+        
         if shape_state is not None:
             obj.set_shape_state(shape_state, duration, easing)
         else:

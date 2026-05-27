@@ -1,7 +1,15 @@
 {
-    "default": ["Static"],
-    "eye_neutral": ["Hover", "Blink"],
-    "eye_thinking": ["Hover", "Think"],
-    "eye_look_left": ["Look"],
-    "eye_look_right": ["Look"]
+    "anims": {
+        "default": ["static"],
+        "eye_neutral": ["hover", "blink"],
+        "eye_thinking": ["hover", "think"],
+        "eye_look_left": ["look"],
+        "eye_look_right": ["look"]
+    },
+    "timings":{
+        "hover": 1.0,
+        "blink": 0.25,
+        "look": 3.0,
+        "think": 2.0
+    }
 }
