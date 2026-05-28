@@ -48,7 +48,7 @@
         ],
         "anim_test": [
             {
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time", 
                 "time":0.5

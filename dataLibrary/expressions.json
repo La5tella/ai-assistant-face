@@ -4,12 +4,18 @@
     "states":{
         "neutral":{
             "0":{
+                "position":[360, 540.0],
+                "shape_state":"Half-Circle",
+                "active": true,
+                "anim":"anim_test"
+            },
+            "1":{
                 "position":[180.0, 360.0],
                 "shape_state":"Circle",
                 "active": true,
                 "anim":"eye_neutral"
             },
-            "1":{
+            "2":{
                 "position":[540.0, 360.0],
                 "shape_state":"Circle",
                 "active": true,

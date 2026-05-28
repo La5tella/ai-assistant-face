@@ -110,7 +110,7 @@ class FaceObject:
         self.anim = Animation(self)
         
 
-        self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
+        self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle', 'Half-Circle']
         self._shape_state = None
         self.shape_state_index = 0
 
@@ -181,6 +181,46 @@ class FaceObject:
                 center_y + x * sin_rotation + y * cos_rotation
             ]
         
+    def halfCircleOrient(self):
+        """
+        This sets the target positions for the vertices into a half-circle pattern.
+        """
+        if self.vert_count <= 0:
+            return
+
+        radius = self.transform.scale
+        center_x, center_y = [0, 0]
+        rotation = self.transform.rotation
+        cos_rotation = math.cos(rotation)
+        sin_rotation = math.sin(rotation)
+
+        if self.vert_count == 1:
+            self.verts[0].target_position = [center_x, center_y - radius]
+            return
+
+        arc_count = max(1, self.vert_count // 2)
+        line_count = self.vert_count - arc_count
+
+        for i in range(arc_count):
+            theta = (math.pi * i) / arc_count
+            x = radius * math.cos(theta)
+            y = -radius * math.sin(theta)
+            vert = self.verts[i]
+            vert.target_position = [
+                center_x + x * cos_rotation - y * sin_rotation,
+                center_y + x * sin_rotation + y * cos_rotation
+            ]
+
+        for i in range(line_count):
+            t = i / line_count
+            x = -radius + (radius * 2 * t)
+            y = 0
+            vert = self.verts[arc_count + i]
+            vert.target_position = [
+                center_x + x * cos_rotation - y * sin_rotation,
+                center_y + x * sin_rotation + y * cos_rotation
+            ]
+
     def orientVertsAlongPolygon(self, corners):
         if len(corners) < 2:
             return
@@ -306,6 +346,8 @@ class FaceObject:
                 self.rectangleOrient()
             case 'Triangle':
                 self.triangleOrient()
+            case 'Half-Circle':
+                self.halfCircleOrient()
 
     def update_shape_state(self, ease_type=None, duration=None, dt=0):
         """
