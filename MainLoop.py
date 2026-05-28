@@ -52,7 +52,7 @@ def main_loop(objCount):
                 anim_dict=anim_library,
                 vert_count= 32,
                 init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=100),
-                vert_debug=True,
+                vert_debug=False,
                 active=False
             )
         )

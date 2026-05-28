@@ -19,7 +19,16 @@
         "happy":{},
         "sad":{},
         "excited":{},
-        "thinking":{}
+        "thinking":{},
+        "test_state":
+        {
+            "0":{
+                "position":[180.0, 360.0],
+                "shape_state":"Circle",
+                "active": true,
+                "anim":"anim_test"
+            }
+        }
     }
 
 

@@ -107,7 +107,7 @@ class FaceObject:
         self.anim_dict = anim_dict
         self.action_index = 0
         self.action_queue = []
-        self.anim = Animation(self, anim_dict["timings"])
+        self.anim = Animation(self)
         
 
         self.shape_state_lib = ['Circle', 'Square', 'Rectangle', 'Triangle']
@@ -314,11 +314,11 @@ class FaceObject:
 
         """
         if self.in_transition:
-            if ease_type is not None:
+            if ease_type != None:
                 self.ease_type = ease_type
 
-            if duration is not None:
-                self.transition_duration = max(duration, 0)
+            if duration != None:
+                self.transition_duration = duration
                 
             if self.transition_duration == 0:
                 for vert in self.verts:

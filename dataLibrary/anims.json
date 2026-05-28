@@ -1,15 +1,58 @@
 {
     "anims": {
         "default": ["static"],
-        "eye_neutral": ["hover", "blink"],
-        "eye_thinking": ["hover", "think"],
-        "eye_look_left": ["look"],
-        "eye_look_right": ["look"]
-    },
-    "timings":{
-        "hover": 1.0,
-        "blink": 0.25,
-        "look": 3.0,
-        "think": 2.0
+        "eye_neutral": [
+            {
+                "action":"hover", 
+                "count":1, 
+                "type":"conditional"
+            }, 
+            {
+                "action":"blink", 
+                "count":1, 
+                "type":"time", 
+                "time":0.25
+            }
+        ],
+        "eye_thinking": [
+            {
+                "action":"hover", 
+                "count":4, 
+                "type":"conditional"
+            }, 
+            {
+                "action":"think", 
+                "count":1, 
+                "type":"conditional", 
+                "time_transition": 0.5, 
+                "time_hold":2.0
+            }
+        ],
+        "eye_look_left": [ 
+            {
+                "action":"look", 
+                "count":1, 
+                "type":"conditional", 
+                "time_transition": 0.5, 
+                "time_hold":2.0
+            }
+        ],
+        "eye_look_right": [
+            {
+                "action":"look", 
+                "count":1, 
+                "type":"conditional", 
+                "time_transition": 0.5, 
+                "time_hold":2.0
+            }
+        ],
+        "anim_test": [
+            {
+                "action":"blink", 
+                "count":1, 
+                "type":"time", 
+                "time":0.5
+            }
+        ]
     }
 }
