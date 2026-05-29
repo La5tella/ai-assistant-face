@@ -4,19 +4,29 @@
     "states":{
         "neutral":{
             "0":{
-                "position":[360, 540.0],
+                "transform":{
+                    "origin_position":[360, 540.0],
+                    "rotation": 180
+                },
                 "shape_state":"Half-Circle",
-                "active": true,
+                "active": false,
                 "anim":"anim_test"
+                
             },
             "1":{
-                "position":[180.0, 360.0],
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0
+                },
                 "shape_state":"Circle",
                 "active": true,
                 "anim":"eye_neutral"
             },
             "2":{
-                "position":[540.0, 360.0],
+                "transform":{
+                    "origin_position":[540.0, 360.0],
+                    "rotation":0
+                },
                 "shape_state":"Circle",
                 "active": true,
                 "anim":"eye_neutral"
@@ -29,7 +39,10 @@
         "test_state":
         {
             "0":{
-                "position":[180.0, 360.0],
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0
+                },
                 "shape_state":"Circle",
                 "active": true,
                 "anim":"anim_test"

@@ -17,6 +17,7 @@ ren = Renderer(
 )
 
 objPool = []
+
 face_scene = None
 
 with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
@@ -33,7 +34,7 @@ def cycle_all_shape_states():
 def main_loop(objCount):
     global face_scene
     running = True
-
+    
     debug_button = Button(
         rect = [10,10,75,25],
         text = "Cycle State",
@@ -41,6 +42,14 @@ def main_loop(objCount):
         screen=ren,
         font = pygame.font.SysFont('Helvetica',size=14,bold=True)
     )
+    debug_button_1 = Button(
+        rect = [10,50,75,25],
+        text = "Toggle Mouth",
+        on_clicked = lambda: activate_mouth(),
+        screen=ren,
+        font = pygame.font.SysFont('Helvetica',size=14,bold=True)
+    )
+    debug_buttons = [debug_button, debug_button_1]
 
 
     for i in range(objCount):
@@ -80,8 +89,8 @@ def main_loop(objCount):
                 if obj.vert_debug:
                     for i, vert in enumerate(obj.verts):
                         vert.draw_vert_debug(vertId=i,screen=ren)
-        if debug_button != None:
-           debug_button.draw(events)
+        for button in debug_buttons:
+           button.draw(events)
 
         pygame.display.flip()
 
@@ -103,7 +112,8 @@ def apply_face_state():
             else:
                 setattr(obj, attr, value)
 
-        
+def activate_mouth():
+    face_scene.mouth_manager.activate_speak()       
 
 if __name__ == "__main__":
     main_loop(5)

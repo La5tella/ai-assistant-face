@@ -1,4 +1,5 @@
 import pygame
+from MouthManager import MouthManager
 import math
 from animation import Animation
 
@@ -15,12 +16,20 @@ class Transform:
 
         origin_position: Two-item screen-space center position.
         scale: Radius or size multiplier used by shape orientation methods.
-        rotation: Rotation in radians applied around origin_position.
+        rotation: Rotation in degrees applied around origin_position.
         """
 
         self.origin_position = origin_position or [0, 0]
         self.scale = scale
         self.rotation = rotation
+
+    @property
+    def rotation(self):
+        return self._rotation
+
+    @rotation.setter
+    def rotation(self, degrees):
+        self._rotation = math.radians(degrees)
 
 
 class Vert:
@@ -433,18 +442,20 @@ class FaceObject:
         if self.in_transition:
             self.color = (self.lerp(225, 0, t), self.lerp(0, 225, t), 0)
         else:
-            self.color = (0, 225, 0)
+            self.colorv = (0, 225, 0)
 
 
 class FaceScene:
     """Coordinates high-level face expression commands across pooled face objects."""
-
+    
     def __init__(self, objects, expression_data):
         """Store the drawable objects and expression library used by command handlers."""
         self.objects = objects
         self.expression_data = expression_data
         self.current_expression = None
 
+        self.mouth_manager = MouthManager(objects[0])
+        """objects[0] will always be mouth."""
 
     def handle_ai_command(self, data):
         """Translate AI handler data into a face expression change.
@@ -496,8 +507,9 @@ class FaceScene:
         shape_state = state_data.get("shape_state")   
 
         for attr, value in state_data.items():
-            if attr == "position":
-                obj.transform.origin_position = value #<<<<<<<
+            if attr == "transform":
+                for atr, val in value.items():
+                    setattr(obj.transform, atr, val) #<<<<<<<
             elif attr == 'anim':
                 obj.curr_anim = value
             else:
@@ -511,7 +523,9 @@ class FaceScene:
     def update(self, dt):
         """Advance animation for every active object in the scene."""
         
-        for obj in self.objects:
-
-            if obj.active:
+        for i, obj in enumerate(self.objects):
+            if i == 0 and obj.active:
+                self.mouth_manager.update(dt)
+            elif obj.active:
                 obj.update(dt)
+        
