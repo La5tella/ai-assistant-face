@@ -1,106 +1,100 @@
 {
     "a":
         {
-        "shape_state":{},
+        "shape_state":{
+            "state":"Half-Circle",
+            "scale":[100,100]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
+        
         },
     "d":
         {
-        "shape_state":{},
+        "shape_state":{
+            "state":"Half-Circle",
+            "scale":[100,80]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "e":{
         "shape_state":{},
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "f":{
         "shape_state":{},
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "m":{
         "shape_state":{},
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "o":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[80,80]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "r":{
         "shape_state":{},
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "s":{
         "shape_state":{},
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "wo":
         {
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[50,70]    
+
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
-            },
-        "time":0.2
+                "type":"time"
+            }
         },
     "neutral":{
         "shape_state":{},
         "anim":{
                "action":"static", 
                "count":1, 
-               "type":"time", 
-               "time":0.25
-            },
-        "time":0.2
+               "type":"time"
+            }
         },
     "smile":{
         "shape_state":{},

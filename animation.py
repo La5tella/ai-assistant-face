@@ -45,6 +45,8 @@ class Animation:
                     done = self.look(self.look_data, dt)
             if done:
                 self.advance_action()
+                if self.obj.debug_flag:
+                    print("Advancing Action")
     
     def hover(self, dt):
         self.time += dt 
@@ -129,5 +131,6 @@ class Animation:
             self.max_time = self.curr_action["time"]
         else:
             self.max_time = 999
-        print("Current Action:" + self.curr_action["action"])
+        
+        
                 

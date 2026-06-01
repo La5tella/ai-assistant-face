@@ -9,7 +9,7 @@ class Transform:
     def __init__(
         self,
         origin_position=[540,540],
-        scale=1.0,
+        scale=[1.0,1.0],
         rotation=0.0
     ):
         """Create a transform.
@@ -110,7 +110,7 @@ class FaceObject:
         self.ease_type = "ease"
         self.in_transition = False
 
-        
+        self.debug_flag=False
         
         self._curr_anim = None
         self.anim_dict = anim_dict
@@ -175,7 +175,7 @@ class FaceObject:
         if self.vert_count <= 0:
             return
 
-        radius = self.transform.scale
+        radius = 1
         center_x, center_y = [0,0]
         rotation = self.transform.rotation
         cos_rotation = math.cos(rotation)
@@ -183,8 +183,8 @@ class FaceObject:
 
         for i, vert in enumerate(self.verts):
             theta = (2 * math.pi * i) / self.vert_count
-            x = radius * math.cos(theta)
-            y = -radius * math.sin(theta)
+            x = self.transform.scale[0] * radius * math.cos(theta)
+            y = self.transform.scale[1] * -radius * math.sin(theta)
             vert.target_position = [
                 center_x + x * cos_rotation - y * sin_rotation,
                 center_y + x * sin_rotation + y * cos_rotation
@@ -197,23 +197,25 @@ class FaceObject:
         if self.vert_count <= 0:
             return
 
-        radius = self.transform.scale
+        radius = 1
+        scale_x = self.transform.scale[0]
+        scale_y = self.transform.scale[1]
         center_x, center_y = [0, 0]
         rotation = self.transform.rotation
         cos_rotation = math.cos(rotation)
         sin_rotation = math.sin(rotation)
 
         if self.vert_count == 1:
-            self.verts[0].target_position = [center_x, center_y - radius]
+            self.verts[0].target_position = [center_x, center_y - scale_y * radius]
             return
 
         arc_count = max(1, self.vert_count // 2)
         line_count = self.vert_count - arc_count
 
         for i in range(arc_count):
-            theta = (math.pi * i) / arc_count
-            x = radius * math.cos(theta)
-            y = -radius * math.sin(theta)
+            theta = (math.pi * i) / max(1, arc_count - 1)
+            x = scale_x * radius * math.cos(theta)
+            y = scale_y * -radius * math.sin(theta)
             vert = self.verts[i]
             vert.target_position = [
                 center_x + x * cos_rotation - y * sin_rotation,
@@ -221,8 +223,8 @@ class FaceObject:
             ]
 
         for i in range(line_count):
-            t = i / line_count
-            x = -radius + (radius * 2 * t)
+            t = i / max(1, line_count - 1)
+            x = -scale_x * radius + (scale_x * radius * 2 * t)
             y = 0
             vert = self.verts[arc_count + i]
             vert.target_position = [
@@ -278,8 +280,8 @@ class FaceObject:
         if a_ratio == None: a_ratio=self.aspect_ratio
         
 
-        width = self.transform.scale * (a_ratio[0]/a_ratio[1]) 
-        height = self.transform.scale
+        width = self.transform.scale[0] * (a_ratio[0]/a_ratio[1]) 
+        height = self.transform.scale[1]
         
 
         corners = [
@@ -305,13 +307,13 @@ class FaceObject:
         """
         This sets the target position's for the verticies into a triangle pattern.
         """
-        radius = self.transform.scale
-        half_width = radius * math.sqrt(3) * 0.5
-        half_height = radius * 0.5
+        radius = 1
+        half_width = self.transform.scale[0] * radius * math.sqrt(3) * 0.5
+        half_height = self.transform.scale[1] * radius * 0.5
         corners = [
             [half_width,-half_height],
             [-half_width,-half_height],
-            [0,radius],
+            [0,self.transform.scale[1] * radius],
                 ]
 
         self.orientVertsAlongPolygon(corners)
@@ -387,8 +389,8 @@ class FaceObject:
             for vert in self.verts:
                 if vert.local_position != vert.target_position:
                         vert.local_position =[self.lerp(vert.local_position[0],vert.target_position[0], t), self.lerp(vert.local_position[1],vert.target_position[1], t)] 
-                        dx = vert.target_position[0] - vert.position[0]
-                        dy = vert.target_position[1] - vert.position[1]
+                        dx = vert.target_position[0] - vert.local_position[0]
+                        dy = vert.target_position[1] - vert.local_position[1]
 
                         if math.sqrt(dx * dx + dy * dy) < .01:
                             vert.local_position = vert.target_position.copy()
@@ -402,7 +404,7 @@ class FaceObject:
     def update(self, dt):
         
         self.update_shape_state(dt=dt)
-        self.add_anim_movement(dt)
+        self.anim.update(dt=dt)
         self.update_global_position()
         
                     
@@ -428,9 +430,6 @@ class FaceObject:
             case _:
                 return t
             
-    def add_anim_movement(self, dt):
-        self.anim.update(dt=dt)
-    
     def update_global_position(self):
         for vert in self.verts:
             vert.position[0] = vert.local_position[0] + self.transform.origin_position[0]
@@ -455,6 +454,8 @@ class FaceScene:
         self.current_expression = None
 
         self.mouth_manager = MouthManager(objects[0])
+        objects[0].debug_flag = True
+        
         """objects[0] will always be mouth."""
 
     def handle_ai_command(self, data):

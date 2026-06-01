@@ -61,7 +61,7 @@ def main_loop(objCount):
                 aspect_ratio=[16,9],
                 anim_dict=anim_library,
                 vert_count= 32,
-                init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=100),
+                init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=[100,100]),
                 vert_debug=True,
                 active=False
             )
