@@ -22,7 +22,7 @@ class MouthManager:
         self.sample_queue = [
             {"syllable":"a","time":0.3},
             {"syllable":"d","time":0.3},
-            {"syllable":"o","time":0.5},
+            {"syllable":"o","time":2.0},
             {"syllable":"wo","time":0.35}
             ]
 
@@ -36,17 +36,7 @@ class MouthManager:
         self.start_syllable()
         
         
-    def send_action_payload(self):
-        #format the syllable queue as an anim action payload
-        if self.syllable_queue[0]:
-            action = self.mouth_lib[self.syllable_queue[0]["syllable"]]["anim"]
-            action["time"] = self.syllable_queue[0]["time"]
-            self.mouth.action_queue.append(action)
-            self.mouth.action_index = 0
-            self.mouth.anim.update_curr_action(self.mouth.action_queue[self.mouth.action_index])
-            print("Sending action: " + action["action"] + " with time " + str(action["time"]) + " from syllable " + self.syllable_queue[0]["syllable"])
-            self.syllable_queue.pop(0)
-
+    
     def start_syllable(self):
         self.time = 0
 
@@ -61,11 +51,12 @@ class MouthManager:
         self.mouth.transform.scale = syl_data["shape_state"]["scale"]
         self.mouth.set_shape_state(
             shape_state=syl_data["shape_state"]["state"],
-            duration=self.curr_syllable["time"] / 2
+            duration=syl_data["anim"]["time"]
         )
 
         action = syl_data["anim"].copy()
-        action["time"] = self.curr_syllable["time"]
+        action["hold_on_complete"] = True
+        action["hold_range"] = [0.95, 1.0]
 
         self.mouth.action_queue = [action]
         self.mouth.action_index = 0
@@ -75,7 +66,8 @@ class MouthManager:
     
     def transition_check(self):
         syllable_time_done = self.time >= self.curr_syllable["time"]
-        anim_done = not self.mouth.anim.curr_action or self.mouth.anim.phase == 0
+        anim_done = self.mouth.anim.action_done or self.mouth.anim.action_hold
+        
 
         if syllable_time_done and anim_done and self.curr_syllable is not None:
             self.start_syllable()

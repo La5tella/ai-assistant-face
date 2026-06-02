@@ -12,6 +12,10 @@ class Animation:
         self.completion_type = "time"
         self.anim_count = 0
         self.phase = 0
+        
+        self.action_done = False
+        self.action_hold = False
+        self.action_end_positions = {"Max":[], "Min":[]}
 
         """'time' or 'conditional', where conditional completion is defined by anim functions, and time completion is when an action takes a specific time."""
 
@@ -32,8 +36,13 @@ class Animation:
 
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
+        if self.action_hold:
+            self.hold_action(dt)
+            return
+
         if self.curr_action:
             done = False
+            self.time += dt
             match self.curr_action["action"]:
                 case "static":
                     return
@@ -44,12 +53,19 @@ class Animation:
                 case "look":
                     done = self.look(self.look_data, dt)
             if done:
-                self.advance_action()
-                if self.obj.debug_flag:
-                    print("Advancing Action")
+                if self.curr_action.get("hold_on_complete"):
+                    self.action_hold = True
+                    self.action_done = True
+                    self.hold_action(dt)
+                    if self.obj.debug_flag:
+                        print("Holding Action")
+                else:
+                    self.action_done = True
+                    self.advance_action()
+                    if self.obj.debug_flag:
+                        print("Advancing Action")
     
-    def hover(self, dt):
-        self.time += dt 
+    def hover(self, dt): 
         self.phase += dt * self.speed
         self.obj.transform.origin_position[1] = (
             self.base_y + math.sin(self.phase) * self.amplitude
@@ -57,8 +73,6 @@ class Animation:
         return self.phase >= (math.tau * 2) #<--- where '2' is the # of cycles
 
     def blink(self, dt):
-        self.time += dt
-
         half_duration = 0.5 * self.curr_action["time"]
 
         # Phase 0: start closing once.
@@ -123,14 +137,55 @@ class Animation:
         else:
             self.curr_action = self.obj.action_queue[self.obj.action_index]
         
+        self.action_hold = False
+        self.action_done = False
         self.completion_type = self.curr_action["type"]
         self.time = 0
         self.phase = 0
+        self.action_hold_time = 0
 
         if self.completion_type == "time":
             self.max_time = self.curr_action["time"]
         else:
             self.max_time = 999
         
+    def hold_action(self, dt=0):
         
-                
+        if not self.curr_action:
+            return
+    
+        if len(self.action_end_positions["Max"]) == 0:
+            hold_max_positions = [
+                vert.local_position.copy()
+                for vert in self.obj.verts
+            ]
+            self.action_end_positions["Max"] = hold_max_positions
+            
+
+        hold_range = self.curr_action.get("hold_range", [1.0, 1.0])
+        hold_speed = self.curr_action.get("hold_speed", 1.0)
+    
+        low = hold_range[0]
+        high = hold_range[1]
+    
+        self.action_hold_time += dt * hold_speed
+    
+        # Oscillates smoothly 0 -> 1 -> 0.
+        wave = (math.sin(self.action_hold_time * math.tau) + 1) * 0.5
+    
+        # Convert wave into range, e.g. 0.95 -> 1.0.
+        completion = low + ((high - low) * wave)
+    
+        if len(self.action_end_positions["Min"]) == 0:
+            hold_min_positions = [
+                vert.local_position.copy() #<--------- This has to change based on which end position it is. Maybe use pre determined scaling?
+                for vert in self.obj.verts
+            ] 
+            for i, local_pos in enumerate(hold_min_positions):
+                self.action_end_positions["Min"].append([
+                    self.obj.lerp(local_pos[0], self.action_end_positions["Max"][i][0], low),
+                    self.obj.lerp(local_pos[1], self.action_end_positions["Max"][i][1], low)
+                    ])
+
+        print(self.action_end_positions["Max"][1], self.action_end_positions["Min"][1])
+        print("")
