@@ -56,7 +56,8 @@ class MouthManager:
 
         action = syl_data["anim"].copy()
         action["hold_on_complete"] = True
-        action["hold_range"] = [0.95, 1.0]
+        action["hold_range"] = [0.5, 1.0]
+        action["hold_scale"] = syl_data["hold_scale"]
 
         self.mouth.action_queue = [action]
         self.mouth.action_index = 0

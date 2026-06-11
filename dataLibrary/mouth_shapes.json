@@ -10,7 +10,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,0.8]
         
         },
     "d":
@@ -24,7 +25,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,0.8]
         },
     "e":{
         "shape_state":{},
@@ -33,7 +35,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,0.8]
         },
     "f":{
         "shape_state":{},
@@ -42,7 +45,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,1]
         },
     "m":{
         "shape_state":{},
@@ -51,7 +55,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,1]
         },
     "o":{
         "shape_state":{
@@ -63,7 +68,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[0.8,1]
         },
     "r":{
         "shape_state":{},
@@ -72,7 +78,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,1]
         },
     "s":{
         "shape_state":{},
@@ -81,7 +88,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[1,1]
         },
     "wo":
         {
@@ -95,7 +103,8 @@
                 "count":1, 
                 "type":"time",
                 "time":0.25
-            }
+            },
+        "hold_scale":[0.8,1]
         },
     "neutral":{
         "shape_state":{},

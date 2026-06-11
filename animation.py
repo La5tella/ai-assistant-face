@@ -177,15 +177,26 @@ class Animation:
         completion = low + ((high - low) * wave)
     
         if len(self.action_end_positions["Min"]) == 0:
+            #calculation for end positions
+            hold_scale = self.curr_action.get("hold_scale",[.8,.8])
             hold_min_positions = [
-                vert.local_position.copy() #<--------- This has to change based on which end position it is. Maybe use pre determined scaling?
+                vert.local_position.copy() 
                 for vert in self.obj.verts
             ] 
             for i, local_pos in enumerate(hold_min_positions):
-                self.action_end_positions["Min"].append([
-                    self.obj.lerp(local_pos[0], self.action_end_positions["Max"][i][0], low),
-                    self.obj.lerp(local_pos[1], self.action_end_positions["Max"][i][1], low)
-                    ])
+                scaled_pos = [
+                    local_pos[0]*hold_scale[0],
+                    local_pos[1]*hold_scale[1]
+                ]
+                self.action_end_positions["Min"].append(scaled_pos)
 
-        print(self.action_end_positions["Max"][1], self.action_end_positions["Min"][1])
-        print("")
+        if len(self.action_end_positions["Min"]) != 0 and len(self.action_end_positions["Max"]) != 0:
+            for i, vert in enumerate(self.obj.verts):
+                vert.target_position = [
+                    self.obj.lerp(self.action_end_positions["Min"][i][0], self.action_end_positions["Max"][i][0], completion),
+                    self.obj.lerp(self.action_end_positions["Min"][i][1], self.action_end_positions["Max"][i][1], completion)
+                    ]
+                print(vert.target_position, vert.position, completion)
+             
+        
+        
