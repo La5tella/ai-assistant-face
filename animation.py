@@ -196,7 +196,7 @@ class Animation:
                     self.obj.lerp(self.action_end_positions["Min"][i][0], self.action_end_positions["Max"][i][0], completion),
                     self.obj.lerp(self.action_end_positions["Min"][i][1], self.action_end_positions["Max"][i][1], completion)
                     ]
-                print(vert.target_position, vert.position, completion)
+                #print(vert.target_position, vert.position, completion)
              
         
         

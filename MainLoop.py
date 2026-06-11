@@ -16,8 +16,6 @@ ren = Renderer(
     pygame.RESIZABLE
 )
 
-objPool = []
-
 face_scene = None
 
 with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
@@ -26,7 +24,7 @@ with open(BASE_DIR / "dataLibrary/anims.json", "r") as file:
     anim_library = json.load(file)
 
 def cycle_all_shape_states():
-    for obj in objPool:
+    for obj in face_scene.objects:
         if obj.active:
             obj.cycle_shape_state()
         
@@ -51,23 +49,7 @@ def main_loop(objCount):
     )
     debug_buttons = [debug_button, debug_button_1]
 
-
-    for i in range(objCount):
-        objPool.append(
-            FaceObject(
-                object_id= i,
-                layer= 0,
-                shape_state= 'Circle',
-                aspect_ratio=[16,9],
-                anim_dict=anim_library,
-                vert_count= 32,
-                init_transform=Transform(origin_position=[(RESOLUTION[0]/4)+(i*(RESOLUTION[0]/2)),RESOLUTION[1]/2], scale=[100,100]),
-                vert_debug=False,
-                active=False
-            )
-        )
-    
-    face_scene = FaceScene(objPool, expression_data)
+    face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, objCount=objCount, RESOLUTION=RESOLUTION)
     face_scene.set_expression(expression_data["default_state"], duration=0)
 
     while running:
@@ -78,17 +60,16 @@ def main_loop(objCount):
                 running = False
         ren.screen.fill((0, 0, 0))
         face_scene.update(dt)
-        for obj in objPool:
-            if obj.active:
-                points = [vert.position for vert in obj.verts]
-                pygame.draw.polygon(
-                    ren.screen,
-                    obj.color,
-                    points
-                )
-                if obj.vert_debug:
-                    for i, vert in enumerate(obj.verts):
-                        vert.draw_vert_debug(vertId=i,screen=ren)
+        for drawables in face_scene.drawables:
+            
+            pygame.draw.polygon(
+                ren.screen,
+                drawables.color,
+                drawables.verts
+            )
+            if drawables.debug:
+                face_scene.objects[drawables.id].draw_vert_debug(screen=ren)
+
         for button in debug_buttons:
            button.draw(events)
 
@@ -104,13 +85,14 @@ def apply_face_state():
     default_state = expression_data["states"][default_state_name]
 
     for obj_id, state_data in default_state.items():
-        obj = objPool[int(obj_id)]
+        obj = face_scene.objects[int(obj_id)]
 
         for attr, value in state_data.items():
             if attr == "position":
                 obj.transform.origin_position = value
             else:
                 setattr(obj, attr, value)
+    print("hello")
 
 def activate_mouth():
     face_scene.mouth_manager.activate_speak()       
