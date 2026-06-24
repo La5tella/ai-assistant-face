@@ -20,6 +20,7 @@ class FaceScene:
                     object_id= i,
                     layer= 0,
                     shape_state= 'Circle',
+                    color=(113,255,236),
                     aspect_ratio=[16,9],
                     anim_dict=anim_library,
                     vert_count= 32,
@@ -31,7 +32,7 @@ class FaceScene:
         
         self.mouth_manager = MouthManager(self.objects[0])
         """objects[0] will always be mouth."""
-        self.objects[0].debug_flag = True
+        
 
     def handle_ai_command(self, data):
         """Translate AI handler data into a face expression change.

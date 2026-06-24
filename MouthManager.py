@@ -1,4 +1,3 @@
-import FaceScene
 import json
 from pathlib import Path
 
@@ -58,6 +57,7 @@ class MouthManager:
         action["hold_on_complete"] = True
         action["hold_range"] = [0.5, 1.0]
         action["hold_scale"] = syl_data["hold_scale"]
+        action["hold_speed"] = 7.5
 
         self.mouth.action_queue = [action]
         self.mouth.action_index = 0
@@ -83,6 +83,7 @@ class MouthManager:
         self.transition_check()
 
     def stfu(self):
+        self.curr_syllable = None
         self.syllable_queue = []
         self.mouth.active = False
 

@@ -143,6 +143,7 @@ class Animation:
         self.time = 0
         self.phase = 0
         self.action_hold_time = 0
+        self.action_end_positions = {"Max":[], "Min":[]}
 
         if self.completion_type == "time":
             self.max_time = self.curr_action["time"]
@@ -192,7 +193,7 @@ class Animation:
 
         if len(self.action_end_positions["Min"]) != 0 and len(self.action_end_positions["Max"]) != 0:
             for i, vert in enumerate(self.obj.verts):
-                vert.target_position = [
+                vert.local_position = [
                     self.obj.lerp(self.action_end_positions["Min"][i][0], self.action_end_positions["Max"][i][0], completion),
                     self.obj.lerp(self.action_end_positions["Min"][i][1], self.action_end_positions["Max"][i][1], completion)
                     ]

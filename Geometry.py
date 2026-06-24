@@ -360,7 +360,8 @@ class FaceObject:
                 for vert in self.verts:
                     vert.local_position = vert.target_position.copy()
                 self.in_transition = False
-                self.debug_movement(1)
+                if self.debug_flag:
+                    self.debug_movement(1)
                 return
 
             self.transition_timer += dt
@@ -379,8 +380,8 @@ class FaceObject:
                             vert.local_position = vert.target_position.copy()
                         else:
                             self.in_transition = True
-                        
-                self.debug_movement(t)
+                if self.debug_flag:        
+                    self.debug_movement(t)
        
     #---------------End Shape State Orientation Functions---------------
     #------------------------Animation Functions------------------------
