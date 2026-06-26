@@ -23,6 +23,8 @@ with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
 with open(BASE_DIR / "dataLibrary/anims.json", "r") as file:
     anim_library = json.load(file)
 
+
+
 def cycle_all_shape_states():
     for obj in face_scene.objects:
         if obj.active:
@@ -73,6 +75,7 @@ def main_loop(objCount):
         for button in debug_buttons:
            button.draw(events)
 
+        ren.apply_crt()
         pygame.display.flip()
 
 

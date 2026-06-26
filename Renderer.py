@@ -31,4 +31,12 @@ class Renderer:
 
         self.running = True
 
+        self.crt_overlay = pygame.Surface(self.RESOLUTION, pygame.SRCALPHA)
+
+        for y in range(0, self.RESOLUTION[0], 3):
+            pygame.draw.line(self.crt_overlay, (0, 0, 0, 45), (0, y), (self.RESOLUTION[0], y))
     
+        self.crt_overlay.fill((40, 80, 60, 20), special_flags=pygame.BLEND_RGBA_ADD)
+
+    def apply_crt(self):    
+        self.screen.blit(self.crt_overlay, (0, 0))

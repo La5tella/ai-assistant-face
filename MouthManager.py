@@ -33,8 +33,6 @@ class MouthManager:
         #test func to activate mouth. Should activate, then auto deactivate
         self.mouth.active = True
         self.start_syllable()
-        
-        
     
     def start_syllable(self):
         self.time = 0

@@ -29,7 +29,8 @@
         "hold_scale":[1,0.8]
         },
     "e":{
-        "shape_state":{},
+        "shape_state":{"state":"Circle",
+            "scale":[80,25]},
         "anim":{
                 "action":"blink", 
                 "count":1, 
