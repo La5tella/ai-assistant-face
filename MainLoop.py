@@ -4,7 +4,8 @@ from UI import Button
 import pygame
 import json
 from pathlib import Path
-import math
+import queue
+from Listener import start_listener, drain_commands
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -54,6 +55,9 @@ def main_loop(objCount):
     face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, objCount=objCount, RESOLUTION=RESOLUTION)
     face_scene.set_expression(expression_data["default_state"], duration=0)
 
+    command_queue = queue.Queue()
+    listener = start_listener(command_queue)
+
     while running:
         dt = ren.clock.tick(60) / 1000.0
         events = pygame.event.get()
@@ -61,6 +65,7 @@ def main_loop(objCount):
             if event.type == pygame.QUIT:
                 running = False
         ren.screen.fill((0, 0, 0))
+        listen_for_input(command_queue)
         face_scene.update(dt)
         for drawables in face_scene.drawables:
             
@@ -100,5 +105,22 @@ def apply_face_state():
 def activate_mouth():
     face_scene.mouth_manager.activate_speak()       
 
+def listen_for_input(command_queue):
+    for command in drain_commands(command_queue):
+        if command["type"] == "expression":
+            face_scene.set_expression(command.get("name", "neutral"))
+
+        elif command["type"] == "speak":
+            syllables = [
+                {"syllable": name, "time": duration}
+                for name, duration in command.get("syllables", [])
+            ]
+            face_scene.mouth_manager.activate_speak(syllables)
+
+        elif command["type"] == "stop_speech":
+            face_scene.mouth_manager.stfu()
+
+
 if __name__ == "__main__":
     main_loop(5)
+

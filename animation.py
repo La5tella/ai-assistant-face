@@ -45,7 +45,6 @@ class Animation:
             match self.curr_action["action"]:
                 case "static":
                     self.refresh_obj_data()
-                    self.action_end_positions = {"Max":[], "Min":[]}
                     done = not self.obj.in_transition
                 case "hover":
                     done = self.hover(dt)
