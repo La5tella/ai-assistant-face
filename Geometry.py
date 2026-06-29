@@ -70,7 +70,6 @@ class FaceObject:
         
         self.id = object_id
 
-        self.visible = active
         self.active = active
 
         self.layer = layer
@@ -398,7 +397,7 @@ class FaceObject:
             layer=self.layer,
             verts=tuple(self.local_to_screen(vertex.local_position) for vertex in self.verts),
             color=self.color,
-            visible=self.visible,
+            active=self.active,
             opacity=self.opacity,
             debug=self.debug_flag
         )

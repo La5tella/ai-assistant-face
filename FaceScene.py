@@ -99,7 +99,7 @@ class FaceScene:
 
     def drawables(self):
         return sorted(
-            (obj.to_drawable() for obj in self.objects.values() if obj.visible),
+            (obj.to_drawable() for obj in self.objects.values() if obj.active),
             key=lambda drawable: drawable.layer,
         )
 

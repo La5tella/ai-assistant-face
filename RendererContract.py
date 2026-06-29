@@ -9,7 +9,7 @@ class DrawableMesh:
     layer: int
     verts: tuple
     color: tuple
-    visible: bool = True
+    active: bool = True
     opacity: float = 1.0
     debug: bool = False
 

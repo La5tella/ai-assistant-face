@@ -19,10 +19,14 @@ class MouthManager:
         self.time = 0
 
         self.sample_queue = [
-            {"syllable":"a","time":0.3},
-            {"syllable":"d","time":0.3},
+            {"syllable":"a","time":2.0},
+            {"syllable":"d","time":2.0},
             {"syllable":"o","time":2.0},
-            {"syllable":"wo","time":0.35}
+            {"syllable":"f","time":2.0},
+            {"syllable":"m","time":2.0},
+            {"syllable":"r","time":2.0},
+            {"syllable":"s","time":2.0},
+            {"syllable":"wo","time":2.0}
             ]
 
     def activate_speak(self, _syllable_queue=None):

@@ -7,7 +7,6 @@ class Animation:
         self.base_x = _obj.transform.origin_position[0]
         
         #completion data
-        self.curr_time = 0
         self.max_time = 1
         self.completion_type = "time"
         self.anim_count = 0
@@ -45,7 +44,9 @@ class Animation:
             self.time += dt
             match self.curr_action["action"]:
                 case "static":
-                    return
+                    self.refresh_obj_data()
+                    self.action_end_positions = {"Max":[], "Min":[]}
+                    done = not self.obj.in_transition
                 case "hover":
                     done = self.hover(dt)
                 case "blink":
@@ -197,7 +198,7 @@ class Animation:
                     self.obj.lerp(self.action_end_positions["Min"][i][0], self.action_end_positions["Max"][i][0], completion),
                     self.obj.lerp(self.action_end_positions["Min"][i][1], self.action_end_positions["Max"][i][1], completion)
                     ]
-                #print(vert.target_position, vert.position, completion)
+                
              
         
         

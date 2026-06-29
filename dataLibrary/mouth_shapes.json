@@ -6,7 +6,7 @@
             "scale":[100,100]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -40,24 +40,30 @@
         "hold_scale":[1,0.8]
         },
     "f":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Half-Circle",
+            "scale":[100,-30]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[1,1]
+        "hold_scale":[1,0.95]
         },
     "m":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[110,5]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[1,1]
+        "hold_scale":[1.1,0.95]
         },
     "o":{
         "shape_state":{
@@ -73,24 +79,30 @@
         "hold_scale":[0.8,1]
         },
     "r":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[60,40]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[1,1]
+        "hold_scale":[1,0.75]
         },
     "s":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[105,20]
+        },
         "anim":{
                 "action":"blink", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[1,1]
+        "hold_scale":[1,0.8]
         },
     "wo":
         {
