@@ -26,14 +26,16 @@ class MouthManager:
             {"syllable":"m","time":2.0},
             {"syllable":"r","time":2.0},
             {"syllable":"s","time":2.0},
-            {"syllable":"wo","time":2.0}
+            {"syllable":"wo","time":0.35}
             ]
 
     def activate_speak(self, _syllable_queue=None):
         if _syllable_queue==None:
-            _syllable_queue = self.sample_queue
-        for syl in _syllable_queue:
-            self.syllable_queue.append(syl)
+            self.syllable_queue = []
+            for payload in self.sample_queue:
+                self.syllable_queue.append(payload.copy())
+        else:
+            self.syllable_queue = _syllable_queue
         #test func to activate mouth. Should activate, then auto deactivate
         self.mouth.active = True
         self.start_syllable()

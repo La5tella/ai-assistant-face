@@ -98,6 +98,7 @@ class FaceObject:
         self.anim_dict = anim_dict
         self.action_index = 0
         self.action_queue = []
+        self.anim_offset = [0,0]
         self.anim = Animation(self)
         
 
@@ -141,7 +142,7 @@ class FaceObject:
             raise ValueError(f"Invalid shape_state: {value}")
         
         self.set_shape_state(value)
-        self.anim.refresh_obj_data()
+        
 
     def setVertPos(self, id, position):
         """
@@ -388,8 +389,6 @@ class FaceObject:
         
         self.update_shape_state(dt=dt)
         self.anim.update(dt=dt)
-        for vert in self.verts:
-            self.local_to_screen(vert.local_position)
         
     def to_drawable(self):
         return DrawableMesh(
@@ -404,8 +403,8 @@ class FaceObject:
 
     def local_to_screen(self, vert):
         return (
-            vert[0] + self.transform.origin_position[0],
-            vert[1] + self.transform.origin_position[1],
+            vert[0] + self.transform.origin_position[0] + self.anim_offset[0],
+            vert[1] + self.transform.origin_position[1] + self.anim_offset[1],
         )
 
 

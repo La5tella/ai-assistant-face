@@ -3,9 +3,6 @@ import math
 class Animation:
     def __init__(self, _obj, speed=1.0):
         self.obj = _obj
-        self.base_y = _obj.transform.origin_position[1]
-        self.base_x = _obj.transform.origin_position[0]
-        
         #completion data
         self.max_time = 1
         self.completion_type = "time"
@@ -28,10 +25,6 @@ class Animation:
         self.amplitude = 10
         self.speed = speed
 
-    def refresh_obj_data(self):
-        self.base_y = self.obj.transform.origin_position[1]
-        self.base_x = self.obj.transform.origin_position[0]
-
 
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
@@ -44,7 +37,7 @@ class Animation:
             self.time += dt
             match self.curr_action["action"]:
                 case "static":
-                    self.refresh_obj_data()
+                    
                     done = not self.obj.in_transition
                 case "hover":
                     done = self.hover(dt)
@@ -67,9 +60,7 @@ class Animation:
     
     def hover(self, dt): 
         self.phase += dt * self.speed
-        self.obj.transform.origin_position[1] = (
-            self.base_y + math.sin(self.phase) * self.amplitude
-        )
+        self.obj.anim_offset[1] = (math.sin(self.phase) * self.amplitude)
         return self.phase >= (math.tau * 2) #<--- where '2' is the # of cycles
 
     def blink(self, dt):
