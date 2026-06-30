@@ -128,6 +128,7 @@ class Animation:
         else:
             self.curr_action = self.obj.action_queue[self.obj.action_index]
         
+        self.obj.anim_offset=[0,0]
         self.action_hold = False
         self.action_done = False
         self.completion_type = self.curr_action["type"]

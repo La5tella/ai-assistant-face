@@ -3,3 +3,5 @@
 3.  Actually create new expressions.
 4.  Implement eye_look_left and eye_look_right
 5.  Figure out how to test with a dialogue.
+6.  Find a way to make the mouth start and end it's activation smoothly.
+7.  Maybe find an anim that blends the mouth into the scene instead of just popping in.

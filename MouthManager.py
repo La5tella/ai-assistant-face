@@ -90,7 +90,3 @@ class MouthManager:
         self.curr_syllable = None
         self.syllable_queue = []
         self.mouth.active = False
-
-#Notes for tomorrow you:
-#Find a way to make the mouth start and end it's activation smoothly.
-#Maybe find an anim that blends the mouth into the scene instead of just popping in.
