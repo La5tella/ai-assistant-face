@@ -37,6 +37,8 @@ class MouthManager:
         else:
             self.syllable_queue = _syllable_queue
         #test func to activate mouth. Should activate, then auto deactivate
+        self.syllable_queue.insert(0,{"syllable":"neutral","time":0.0001})
+        self.syllable_queue.append({"syllable":"neutral","time":0.1})
         self.mouth.active = True
         self.start_syllable()
     

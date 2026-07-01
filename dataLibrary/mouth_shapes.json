@@ -120,13 +120,17 @@
         "hold_scale":[0.8,1]
         },
     "neutral":{
-        "shape_state":{},
+        "shape_state":{
+            "state":"Circle",
+            "scale":[80,0]
+        },
         "anim":{
                "action":"static", 
                "count":1, 
                "type":"time",
                "time":0.25
-            }
+            },
+        "hold_scale":[1,1]
         },
     "smile":{
         "shape_state":{},

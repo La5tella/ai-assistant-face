@@ -6,3 +6,4 @@ __pycache__/*
 AICode/*
 contextFiles/*
 /.venv/*
+API_KEYS.json
