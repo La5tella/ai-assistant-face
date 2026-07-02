@@ -25,7 +25,6 @@ class Animation:
         self.amplitude = 10
         self.speed = speed
 
-
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
         if self.action_hold:

@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Main Loop",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "Scripts.MainLoop",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+          "PYTHONPYCACHEPREFIX": "${workspaceFolder}/Enviornments/__pycache__"
+      }
+},
+    {
+      "name": "Run Client Side Debugger",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}//Scripts/clientSideDebugger/llm_response_debugger.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPYCACHEPREFIX": "${workspaceFolder}/Enviornments/__pycache__"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Face With Client Side Debugger",
+      "configurations": [
+        "Run Main Loop",
+        "Run Client Side Debugger"
+      ]
+    }
+  ]
+}

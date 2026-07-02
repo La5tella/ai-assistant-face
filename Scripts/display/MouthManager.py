@@ -8,7 +8,7 @@ class MouthManager:
         
         #Mouth State Library
         self.mouth_lib = None
-        with open(Path(__file__).resolve().parent / "dataLibrary/mouth_shapes.json", "r") as file:
+        with open(Path(__file__).resolve().parents[2] / "dataLibrary" / "mouth_shapes.json", "r") as file:
             self.mouth_lib = json.load(file)
         if self.mouth_lib == None:
             print("Mouth Shape Library not loaded. Check .json pathing?")

@@ -9,12 +9,12 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from CommandClient import DEFAULT_HOST, DEFAULT_PORT, send_commands
-from ElevenLabsClient import create_speak_command
+from Scripts.aiIntegration.CommandClient import DEFAULT_HOST, DEFAULT_PORT, send_commands
+from Scripts.aiIntegration.ElevenLabsClient import create_speak_command
 
 
 def load_expression_names() -> list[str]:

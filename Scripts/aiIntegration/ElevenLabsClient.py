@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 def create_speak_command(text:str, debug:bool):

@@ -1,8 +1,8 @@
 import pygame
 from math import cos, pi, radians, sin, sqrt
-from animation import Animation
+from Scripts.display.animation import Animation
 from dataclasses import dataclass
-from RendererContract import DrawableMesh
+from Scripts.display.RendererContract import DrawableMesh
 
 @dataclass
 class Transform:

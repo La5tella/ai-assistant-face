@@ -1,14 +1,14 @@
-from Renderer import Renderer 
-from FaceScene import FaceObject, FaceScene, Transform
-from UI import Button
+from Scripts.display.Renderer import Renderer 
+from Scripts.display.FaceScene import FaceObject, FaceScene, Transform
+from Scripts.display.UI import Button
 import pygame
 import json
 from pathlib import Path
 import queue
-from CommandListener import start_listener, drain_commands
+from Scripts.aiIntegration.CommandListener import start_listener, drain_commands
 
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parents[1]
 RESOLUTION = [720,720]
 
 ren = Renderer(
