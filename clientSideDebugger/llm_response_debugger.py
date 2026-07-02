@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import queue
 import sys
 import threading
@@ -16,6 +17,26 @@ from CommandClient import DEFAULT_HOST, DEFAULT_PORT, send_commands
 from ElevenLabsClient import create_speak_command
 
 
+def load_expression_names() -> list[str]:
+    expressions_path = REPO_ROOT / "dataLibrary" / "expressions.json"
+
+    with open(expressions_path, "r") as file:
+        expression_data = json.load(file)
+
+    states = expression_data.get("states")
+    if not isinstance(states, dict) or not states:
+        raise ValueError(f"No expression states found in {expressions_path}.")
+
+    default_state = expression_data.get("default_state")
+    expression_names = list(states.keys())
+
+    if default_state in states:
+        expression_names.remove(default_state)
+        return [default_state, *expression_names]
+
+    return expression_names
+
+
 class LLMResponseDebugger(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -26,6 +47,8 @@ class LLMResponseDebugger(tk.Tk):
         self.host_var = tk.StringVar(value=DEFAULT_HOST)
         self.port_var = tk.IntVar(value=DEFAULT_PORT)
         self.debug_elevenlabs_var = tk.BooleanVar(value=True)
+        self.expression_names = load_expression_names()
+        self.expression_var = tk.StringVar(value=self.expression_names[0])
         self.status_var = tk.StringVar(value="Ready")
         self.log_queue: queue.Queue[str] = queue.Queue()
 
@@ -34,7 +57,7 @@ class LLMResponseDebugger(tk.Tk):
 
     def _build_ui(self) -> None:
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
 
         connection_frame = ttk.Frame(self, padding=(12, 12, 12, 6))
         connection_frame.grid(row=0, column=0, sticky="ew")
@@ -62,8 +85,21 @@ class LLMResponseDebugger(tk.Tk):
             variable=self.debug_elevenlabs_var,
         ).grid(row=0, column=4, sticky="w")
 
+        expression_frame = ttk.Frame(self, padding=(12, 0, 12, 6))
+        expression_frame.grid(row=1, column=0, sticky="ew")
+        expression_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(expression_frame, text="Expression").grid(row=0, column=0, sticky="w")
+        ttk.Combobox(
+            expression_frame,
+            textvariable=self.expression_var,
+            values=self.expression_names,
+            state="readonly",
+            width=24,
+        ).grid(row=0, column=1, sticky="w", padx=(6, 0))
+
         text_frame = ttk.Frame(self, padding=(12, 6))
-        text_frame.grid(row=1, column=0, sticky="nsew")
+        text_frame.grid(row=2, column=0, sticky="nsew")
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(1, weight=1)
 
@@ -73,7 +109,7 @@ class LLMResponseDebugger(tk.Tk):
         self.response_text.insert("1.0", "Hello from the client-side debugger.")
 
         button_frame = ttk.Frame(self, padding=(12, 6))
-        button_frame.grid(row=2, column=0, sticky="ew")
+        button_frame.grid(row=3, column=0, sticky="ew")
 
         self.send_button = ttk.Button(
             button_frame,
@@ -95,7 +131,7 @@ class LLMResponseDebugger(tk.Tk):
         ).grid(row=0, column=2, sticky="w", padx=(8, 0))
 
         log_frame = ttk.Frame(self, padding=(12, 6, 12, 12))
-        log_frame.grid(row=3, column=0, sticky="nsew")
+        log_frame.grid(row=4, column=0, sticky="nsew")
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(1, weight=1)
 
@@ -131,14 +167,19 @@ class LLMResponseDebugger(tk.Tk):
 
     def _create_and_send_speak_command(self, text: str) -> None:
         debug_elevenlabs = self.debug_elevenlabs_var.get()
-        commands = create_speak_command(text, debug=debug_elevenlabs)
+        expression_name = self.expression_var.get()
+        commands = [
+            {"type": "expression", "name": expression_name},
+            *create_speak_command(text, debug=debug_elevenlabs),
+        ]
         send_commands(
             commands,
             host=self.host_var.get(),
             port=self.port_var.get(),
         )
         self.log_queue.put(
-            f"Sent {len(commands)} command(s). Debug ElevenLabs={debug_elevenlabs}"
+            f"Sent {len(commands)} command(s). Expression={expression_name}. "
+            f"Debug ElevenLabs={debug_elevenlabs}"
         )
 
     def _run_in_worker(self, status: str, action) -> None:

@@ -15,8 +15,8 @@ def create_speak_command(text:str, debug:bool):
     if debug:
         audio = build_debug_audio()
     else:
-        audio = create_elevenlabs_audio(text)
-
+        audio = normalize_audio_response(create_elevenlabs_audio(text))
+    
     payload = process_audio(audio)
 
     return [{"type":"speak", "syllables":payload}, {"type":"play", "audio":audio["audio_base64"]}]
@@ -202,3 +202,16 @@ def build_debug_audio():
               ]
             }
         }
+
+def normalize_audio_response(audio):
+    if isinstance(audio, dict):
+        return audio
+
+    return {
+        "audio_base64": audio.audio_base_64,
+        "alignment": {
+            "characters": audio.alignment.characters,
+            "character_start_times_seconds": audio.alignment.character_start_times_seconds,
+            "character_end_times_seconds": audio.alignment.character_end_times_seconds,
+        },
+    }

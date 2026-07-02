@@ -86,7 +86,7 @@ class FaceScene:
         for attr, value in state_data.items():
             if attr == "transform":
                 for atr, val in value.items():
-                    setattr(obj.transform, atr, val) #<<<<<<<
+                    setattr(obj.transform, atr, val)
             elif attr == 'anim':
                 obj.curr_anim = value
             else:
