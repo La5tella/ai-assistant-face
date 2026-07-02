@@ -1,10 +1,4 @@
-.vscode/*
-__pycache__/*
-.codex/*
-.vscode/*
-.agents/*
-AICode/*
+Environments/*
 contextFiles/*
-.venv/*
 API_KEYS.json
 clientSideDebugger/__pycache__/*
