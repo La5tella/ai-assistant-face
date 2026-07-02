@@ -5,7 +5,7 @@ import pygame
 import json
 from pathlib import Path
 import queue
-from Listener import start_listener, drain_commands, start_debug_sender
+from CommandListener import start_listener, drain_commands
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -51,14 +51,14 @@ def main_loop(objCount):
         screen=ren,
         font = pygame.font.SysFont('Helvetica',size=14,bold=True)
     )
-    debug_button_2 = Button(
-        rect = [10,90,75,25],
-        text = "Start Debug sender",
-        on_clicked=lambda: start_debug_sender(),
-        screen=ren,
-        font = pygame.font.SysFont('Helvetica',size=14,bold=True)
-    )
-    debug_buttons = [debug_button, debug_button_1, debug_button_2]
+    #debug_button_2 = Button(
+    #    rect = [10,90,75,25],
+    #    text = "Start Debug sender",
+    #    on_clicked=lambda: start_debug_sender(),
+    #    screen=ren,
+    #    font = pygame.font.SysFont('Helvetica',size=14,bold=True)
+    #)
+    debug_buttons = [debug_button, debug_button_1]#, debug_button_2]
 
     face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, objCount=objCount, RESOLUTION=RESOLUTION)
     face_scene.set_expression(expression_data["default_state"], duration=0)

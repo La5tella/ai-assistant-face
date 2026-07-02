@@ -25,8 +25,7 @@ CommandQueue = queue.Queue[dict[str, Any]]
 
 _listener_lock = threading.Lock()
 _active_listener: "ListenerHandle | None" = None
-_debug_sender_lock = threading.Lock()
-_active_debug_sender: threading.Thread | None = None
+
 
 
 
@@ -181,7 +180,7 @@ def parse_command_line(line: str) -> dict[str, Any] | None:
         return None
 
     command_type = payload.get("type")
-    if command_type not in {"expression", "speak", "stop_speech"}:
+    if command_type not in {"expression", "speak", "play", "stop_speech"}:
         print(f"Listener ignored unknown command type: {command_type}")
         return None
 
@@ -198,85 +197,3 @@ def drain_commands(command_queue: CommandQueue) -> list[dict[str, Any]]:
             commands.append(command_queue.get_nowait())
         except queue.Empty:
             return commands
-
-
-def send_commands(
-    commands: list[dict[str, Any]],
-    host: str = DEFAULT_HOST,
-    port: int = DEFAULT_PORT,
-    delay: float = 0.0,
-) -> None:
-    """Send commands to the listener as a simulated external client.
-
-    This is intentionally client-side code. Use it from tests or debug tools,
-    not from the listener server thread itself.
-    """
-
-    with socket.create_connection((host, port), timeout=2.0) as client:
-        for command in commands:
-            line = json.dumps(command) + "\n"
-            client.sendall(line.encode("utf-8"))
-
-            if delay > 0:
-                time.sleep(delay)
-
-
-def start_debug_sender(
-    commands: list[dict[str, Any]] | None = None,
-    host: str = DEFAULT_HOST,
-    port: int = DEFAULT_PORT,
-    delay: float = 0.25,
-) -> threading.Thread:
-    """Start a non-blocking simulated client for a debug button.
-
-    Example MainLoop button callback:
-        on_clicked=lambda: start_debug_sender()
-
-    The default sequence exercises expression, speech, and neutral reset.
-    """
-
-    global _active_debug_sender
-
-    with _debug_sender_lock:
-        if _active_debug_sender is not None and _active_debug_sender.is_alive():
-            print("Debug sender already active")
-            return _active_debug_sender
-
-    if commands is None:
-        commands = [
-            {"type": "expression", "name": "happy"},
-            {
-                "type": "speak",
-                "syllables": [
-                    ["a", 0.18],
-                    ["d", 0.12],
-                    ["o", 0.22],
-                    ["m", 0.14],
-                ],
-            },
-            {"type": "expression", "name": "neutral"},
-        ]
-
-    thread = threading.Thread(
-        target=_run_debug_sender,
-        args=(commands, host, port, delay),
-        name="FaceDebugCommandSender",
-        daemon=True,
-    )
-    with _debug_sender_lock:
-        _active_debug_sender = thread
-
-    thread.start()
-    return thread
-
-
-def _run_debug_sender(
-    commands: list[dict[str, Any]],
-    host: str,
-    port: int,
-    delay: float,
-) -> None:
-    try:
-        send_commands(commands=commands, host=host, port=port, delay=delay)
-    except OSError as exc:
-        print(f"Debug sender could not connect to listener: {exc}")

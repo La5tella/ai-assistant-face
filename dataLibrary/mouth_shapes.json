@@ -68,7 +68,7 @@
     "o":{
         "shape_state":{
             "state":"Circle",
-            "scale":[80,80]
+            "scale":[40,40]
         },
         "anim":{
                 "action":"blink", 
