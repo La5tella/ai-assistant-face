@@ -1,5 +1,6 @@
 Enviornments/*
 contextFiles/*
 API_KEYS.json
-clientSideDebugger/__pycache__/*
 AICode/*
+*/__pycache__
+*/*/__pycache__

@@ -19,14 +19,14 @@ class MouthManager:
         self.time = 0
 
         self.sample_queue = [
-            {"syllable":"a","time":2.0},
-            {"syllable":"d","time":2.0},
-            {"syllable":"o","time":2.0},
-            {"syllable":"f","time":2.0},
-            {"syllable":"m","time":2.0},
-            {"syllable":"r","time":2.0},
-            {"syllable":"s","time":2.0},
-            {"syllable":"wo","time":0.35}
+            {"syllable":"a","time":0.05,"total_time":2.0},
+            {"syllable":"d","time":0.05,"total_time":2.0},
+            {"syllable":"o","time":0.05,"total_time":2.0},
+            {"syllable":"f","time":0.05,"total_time":2.0},
+            {"syllable":"m","time":0.05,"total_time":2.0},
+            {"syllable":"r","time":0.05,"total_time":2.0},
+            {"syllable":"s","time":0.05,"total_time":2.0},
+            {"syllable":"wo","time":0.05,"total_time":0.35}
             ]
 
     def activate_speak(self, _syllable_queue=None):
@@ -37,8 +37,8 @@ class MouthManager:
         else:
             self.syllable_queue = _syllable_queue
         #test func to activate mouth. Should activate, then auto deactivate
-        self.syllable_queue.insert(0,{"syllable":"neutral","time":0.0001})
-        self.syllable_queue.append({"syllable":"neutral","time":0.1})
+        self.syllable_queue.insert(0,{"syllable":"neutral","time":0.0001, "total_time":0.0001})
+        self.syllable_queue.append({"syllable":"neutral","time":0.05, "total_time":0.05})
         self.mouth.active = True
         self.start_syllable()
     
@@ -52,11 +52,12 @@ class MouthManager:
 
         self.curr_syllable = self.syllable_queue.pop(0)
         syl_data = self.mouth_lib[self.curr_syllable["syllable"]]
+        transition_time = self.curr_syllable["time"]
 
         self.mouth.transform.scale = syl_data["shape_state"]["scale"]
         self.mouth.set_shape_state(
             shape_state=syl_data["shape_state"]["state"],
-            duration=syl_data["anim"]["time"]
+            duration=transition_time
         )
 
         action = syl_data["anim"].copy()
@@ -64,6 +65,7 @@ class MouthManager:
         action["hold_range"] = [0.5, 1.0]
         action["hold_scale"] = syl_data["hold_scale"]
         action["hold_speed"] = 7.5
+        action["time"] = self.curr_syllable["total_time"]
 
         self.mouth.action_queue = [action]
         self.mouth.action_index = 0
@@ -72,7 +74,7 @@ class MouthManager:
         print("Sending action: " + action["action"] + " with time " + str(action["time"]) + " from syllable " + self.curr_syllable["syllable"])
     
     def transition_check(self):
-        syllable_time_done = self.time >= self.curr_syllable["time"]
+        syllable_time_done = self.time >= self.curr_syllable["total_time"]
         anim_done = self.mouth.anim.action_done or self.mouth.anim.action_hold
         
 

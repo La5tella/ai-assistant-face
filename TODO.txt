@@ -1,7 +1,4 @@
-1.  Add a transition for when expression data changes. Currently, objects snap back to current state.
-2.  Debug button for opening listener port not working as intended.
-3.  Actually create new expressions.
-4.  Implement eye_look_left and eye_look_right
-5.  Figure out how to test with a dialogue.
-6.  Find a way to make the mouth start and end it's activation smoothly.
-7.  Maybe find an anim that blends the mouth into the scene instead of just popping in.
+  Add a transition for when expression data changes. Currently, objects snap back to current state.
+  Actually create new expressions.
+  Implement eye_look_left and eye_look_right
+  Figure out how to make mouth already open transition straight into the next shape key if not a constantant. (a->e vs a->b)

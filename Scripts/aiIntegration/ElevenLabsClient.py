@@ -99,18 +99,20 @@ def merge_syllable_timings(syllables, timings, min_duration=0.05):
     merged = []
 
     for syllable, duration in zip(syllables, timings):
+        transition_time = duration
         if duration <= 0:
             continue
 
         if merged and merged[-1][0] == syllable:
-            merged[-1][1] += duration
+            merged[-1][2] += duration
             continue
 
         if duration < min_duration and merged:
-            merged[-1][1] += duration
+            merged[-1][2] += duration
             continue
 
-        merged.append([syllable, duration])
+        total_time = duration
+        merged.append([syllable, transition_time, total_time])
 
     return merged
 

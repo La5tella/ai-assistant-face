@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import queue
 from Scripts.aiIntegration.CommandListener import start_listener, drain_commands
+from Scripts.aiIntegration.AudioPlayer import AudioPlayer
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -34,7 +35,8 @@ def cycle_all_shape_states():
 
 def main_loop(objCount):
     global face_scene
-    
+    global audio_player
+
     running = True
     
     debug_button = Button(
@@ -56,6 +58,7 @@ def main_loop(objCount):
 
     face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, objCount=objCount, RESOLUTION=RESOLUTION)
     face_scene.set_expression(expression_data["default_state"], duration=0)
+    audio_player = AudioPlayer()
 
     command_queue = queue.Queue()
     listener = start_listener(command_queue)
@@ -105,22 +108,28 @@ def apply_face_state():
     print("hello")
 
 def activate_mouth():
-    face_scene.mouth_manager.activate_speak()       
+    face_scene.mouth_manager.activate_speak()      
 
 def listen_for_input(command_queue):
     for command in drain_commands(command_queue):
-        if command["type"] == "expression":
-            face_scene.set_expression(command.get("name", "neutral"))
+        
+        match command["type"]: 
+            case "expression":
+                face_scene.set_expression(command.get("name", "neutral"))
 
-        elif command["type"] == "speak":
-            syllables = [
-                {"syllable": name, "time": duration}
-                for name, duration in command.get("syllables", [])
-            ]
-            face_scene.mouth_manager.activate_speak(syllables)
+            case "speak":
+                syllables = [
+                    {"syllable": name, "time": duration, "total_time":total_time}
+                    for name, duration, total_time in command.get("syllables", [])
+                ]
+                face_scene.mouth_manager.activate_speak(syllables)
 
-        elif command["type"] == "stop_speech":
-            face_scene.mouth_manager.stfu()
+            case "play":
+                audio_player.play_base64_audio(command.get("audio", None)) 
+
+            case "stop_speech":
+                face_scene.mouth_manager.stfu()
+                audio_player.stfu()
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@
         "shape_state":{"state":"Circle",
             "scale":[80,25]},
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -71,7 +71,7 @@
             "scale":[40,40]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -112,7 +112,7 @@
 
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
