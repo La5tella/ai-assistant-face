@@ -4,6 +4,7 @@ class Animation:
     def __init__(self, _obj, speed=1.0):
         self.obj = _obj
         #completion data
+        self.transition_time = 0.025
         self.max_time = 1
         self.completion_type = "time"
         self.anim_count = 0
@@ -25,6 +26,8 @@ class Animation:
         self.amplitude = 10
         self.speed = speed
 
+        self.constanant_timer = 0
+
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
         if self.action_hold:
@@ -36,7 +39,6 @@ class Animation:
             self.time += dt
             match self.curr_action["action"]:
                 case "static":
-                    
                     done = not self.obj.in_transition
                 case "hover":
                     done = self.hover(dt)
@@ -44,6 +46,8 @@ class Animation:
                     done = self.blink(dt)
                 case "look":
                     done = self.look(self.look_data, dt)
+                case "constanant_close":
+                    done = self.constanant_close(dt)
             if done:
                 if self.curr_action.get("hold_on_complete"):
                     self.action_hold = True
@@ -63,7 +67,7 @@ class Animation:
         return self.phase >= (math.tau * 2) #<--- where '2' is the # of cycles
 
     def blink(self, dt):
-        half_duration = 0.5 * self.curr_action["time"]
+        half_duration = 0.5 * self.transition_time
 
         # Phase 0: start closing once.
         if self.phase == 0:
@@ -138,6 +142,10 @@ class Animation:
 
         if self.completion_type == "time":
             self.max_time = self.curr_action["time"]
+            try:
+                self.transition_time = self.curr_action["transition_time"]
+            except KeyError:
+                self.transition_time = 0
         else:
             self.max_time = 999
         
@@ -189,6 +197,34 @@ class Animation:
                     self.obj.lerp(self.action_end_positions["Min"][i][1], self.action_end_positions["Max"][i][1], completion)
                     ]
                 
-             
+    def constanant_close(self, dt):
+        half_time = self.curr_action["transition_time"] * 0.5
+        
+        self.constanant_timer += dt
+        completion = self.constanant_timer / half_time
+        
+        match self.phase:
+            case 0:
+                for vert in self.obj.verts:
+                    vert.target_position = [
+                        vert.local_position[0], self.obj.transform.origin_position[1]
+                    ]
+                self.obj.in_transition = True
+                self.obj.transition_duration = half_time
+                if completion >= 1:
+                    self.phase = 0.5
+                    self.constanant_timer = 0
+                return False
+            case 0.5:
+                self.obj.set_shape_state(self.obj.shape_state)
+                if completion >= 1:
+                    self.phase = 1
+                return False
+            case 1:
+                if not self.obj.in_transition:
+                    self.phase = 0
+                    return True
+
+                return False
         
         

@@ -37,7 +37,9 @@ class MouthManager:
         else:
             self.syllable_queue = _syllable_queue
         #test func to activate mouth. Should activate, then auto deactivate
-        self.syllable_queue.insert(0,{"syllable":"neutral","time":0.0001, "total_time":0.0001})
+        self.mouth.transform.scale = [1,0]
+        self.mouth.shape_state = "Circle"
+        
         self.syllable_queue.append({"syllable":"neutral","time":0.05, "total_time":0.05})
         self.mouth.active = True
         self.start_syllable()
@@ -65,6 +67,7 @@ class MouthManager:
         action["hold_range"] = [0.5, 1.0]
         action["hold_scale"] = syl_data["hold_scale"]
         action["hold_speed"] = 7.5
+        action["transition_time"] = transition_time
         action["time"] = self.curr_syllable["total_time"]
 
         self.mouth.action_queue = [action]

@@ -21,7 +21,7 @@
             "scale":[100,80]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -45,12 +45,12 @@
             "scale":[100,-30]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[1,0.95]
+        "hold_scale":[0.8,0.1]
         },
     "m":{
         "shape_state":{
@@ -58,7 +58,7 @@
             "scale":[110,5]
         },
         "anim":{
-                "action":"blink", 
+                "action":"constanant_close", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -84,7 +84,7 @@
             "scale":[60,40]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25
@@ -97,7 +97,7 @@
             "scale":[105,20]
         },
         "anim":{
-                "action":"blink", 
+                "action":"static", 
                 "count":1, 
                 "type":"time",
                 "time":0.25

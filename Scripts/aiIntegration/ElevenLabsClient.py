@@ -23,11 +23,27 @@ def create_speak_command(text:str, debug:bool):
 
 def process_audio(audio_data):
     alignment = audio_data["alignment"]
+    filtered_characters = []
+    filtered_starts = []
+    filtered_ends = []
+    timing_disruptors = {"-",",","'"}
 
-    syllables = characters_to_syllables(alignment["characters"])
-    timings = timing_processing(
+    for character, start, end in zip(
+        alignment["characters"],
         alignment["character_start_times_seconds"],
         alignment["character_end_times_seconds"]
+    ):
+        if character in timing_disruptors:
+            continue
+
+        filtered_characters.append(character)
+        filtered_starts.append(start)
+        filtered_ends.append(end)
+
+    syllables = characters_to_syllables(filtered_characters)
+    timings = timing_processing(
+        filtered_starts,
+        filtered_ends
     )
 
     speak_pairs = merge_syllable_timings(syllables, timings)
@@ -49,7 +65,7 @@ def characters_to_syllables(characters):
         "y": "e",
         "e": "e",
         "o": "o",
-        "u": "wo",
+        "u": "o",
         "w": "wo",
         "q": "wo",
         "b": "m",
@@ -71,12 +87,13 @@ def characters_to_syllables(characters):
         "h": "d",
         "r": "r",
     }
-
-
-    for index, char in enumerate(characters):
+    
+    lowercased = [item.lower() for item in characters]
+ 
+    for index, char in enumerate(lowercased):
         next_char = (
-            characters[index + 1]
-            if index + 1 < len(characters)
+            lowercased[index + 1]
+            if index + 1 < len(lowercased)
             else ""
         )
 

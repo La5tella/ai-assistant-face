@@ -322,7 +322,7 @@ class FaceObject:
 
         if self.transition_duration == 0:
             for vert in self.verts:
-                vert.local_position = vert.target_position.copy()
+                vert.local_position = vert.target_position.copy() 
             self.in_transition = False
         else:
             self.in_transition = True

@@ -16,10 +16,10 @@ class RossbotAgentClient:
         mouth_cues, audio = self.tts_client.create_speech(spoken_text)
 
         self.command_client.send_commands([
-            {"type": "speak", "syllables": mouth_cues}
+            {"type": "speak", "syllables": mouth_cues}, {"type":"play","audio":audio}
         ])
 
-        # Audio playback would happen here or in another audio layer.
+        
 
 class debug_screen():
     pass
