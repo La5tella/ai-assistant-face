@@ -17,7 +17,7 @@ def create_speak_command(text:str, debug:bool):
     else:
         audio = normalize_audio_response(create_elevenlabs_audio(text))
     
-    #payload = process_audio(audio)
+    payload = process_audio(audio)
     #alignment = audio["alignment"]
     #audio_span = (
     #    alignment["character_end_times_seconds"][-1]
