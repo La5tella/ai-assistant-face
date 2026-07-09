@@ -17,38 +17,127 @@ def create_speak_command(text:str, debug:bool):
     else:
         audio = normalize_audio_response(create_elevenlabs_audio(text))
     
-    payload = process_audio(audio)
+    #payload = process_audio(audio)
+    #alignment = audio["alignment"]
+    #audio_span = (
+    #    alignment["character_end_times_seconds"][-1]
+    #    - alignment["character_start_times_seconds"][0]
+    #)
+#
+    #payload_span = sum(item[2] for item in payload)
+    #
+    #print("audio_span", audio_span)
+    #print("payload_span", payload_span)
+    #print("payload_minus_audio", payload_span - audio_span)
 
     return [{"type":"speak", "syllables":payload}, {"type":"play", "audio":audio["audio_base64"]}]
 
 def process_audio(audio_data):
     alignment = audio_data["alignment"]
-    filtered_characters = []
-    filtered_starts = []
-    filtered_ends = []
-    timing_disruptors = {"-",",","'"}
+
+    short_gap_limit = 0.12
+    previous_extend_cap = 0.06
+
+    neutral_total = 0.10
+    neutral_transition = 0.04
+
+    min_viseme_duration = 0.04
+
+    char_to_shape = {
+        "a": "a",
+        "i": "a",
+        "y": "e",
+        "e": "e",
+        "o": "o",
+        "u": "o",
+        "w": "wo",
+        "q": "wo",
+        "b": "m",
+        "m": "m",
+        "p": "m",
+        "f": "f",
+        "v": "f",
+        "c": "s",
+        "s": "s",
+        "x": "s",
+        "z": "s",
+        "d": "d",
+        "g": "d",
+        "j": "d",
+        "k": "d",
+        "l": "d",
+        "n": "d",
+        "t": "d",
+        "h": "d",
+        "r": "r",
+    }
+
+    merged = []
+
+    def add_syllable(shape, transition_time, total_time):
+        if total_time <= 0:
+            return
+
+        if merged and merged[-1][0] == shape:
+            merged[-1][2] += total_time
+            return
+
+        if shape != "wait" and total_time < min_viseme_duration and merged:
+            merged[-1][2] += total_time
+            return
+
+        merged.append([shape, transition_time, total_time])
+
+    def add_pause(duration):
+        if not merged:
+            return
+
+        if duration <= short_gap_limit:
+            merged[-1][2] += min(duration, previous_extend_cap)
+
+            leftover = duration - previous_extend_cap
+            if leftover > 0:
+                add_syllable("wait", 0.0, leftover)
+
+            return
+
+        visible_neutral = min(neutral_total, duration)
+        add_syllable(
+            "neutral",
+            min(neutral_transition, visible_neutral),
+            visible_neutral
+        )
+
+        leftover = duration - visible_neutral
+        if leftover > 0:
+            add_syllable("wait", 0.0, leftover)
+
 
     for character, start, end in zip(
         alignment["characters"],
         alignment["character_start_times_seconds"],
         alignment["character_end_times_seconds"]
     ):
-        if character in timing_disruptors:
+        duration = end - start
+
+        if duration <= 0:
             continue
 
-        filtered_characters.append(character)
-        filtered_starts.append(start)
-        filtered_ends.append(end)
+        char = character.lower()
 
-    syllables = characters_to_syllables(filtered_characters)
-    timings = timing_processing(
-        filtered_starts,
-        filtered_ends
-    )
+        if char.isalpha():
+            shape = char_to_shape.get(char)
 
-    speak_pairs = merge_syllable_timings(syllables, timings)
+            if shape is not None:
+                add_syllable(shape, duration, duration)
+            else:
+                add_pause(duration)
 
-    return speak_pairs
+            continue
+
+        add_pause(duration)
+
+    return merged
 
 def characters_to_syllables(characters):
     """Convert ElevenLabs character alignment into mouth-shape names.

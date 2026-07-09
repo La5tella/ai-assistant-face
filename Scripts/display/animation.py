@@ -27,9 +27,11 @@ class Animation:
         self.speed = speed
 
         self.constanant_timer = 0
+        self.debug_timer = 0
 
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
+        self.debug_timer +=dt
         if self.action_hold:
             self.hold_action(dt)
             return
@@ -112,6 +114,8 @@ class Animation:
         return self.time >= self.max_time
 
     def advance_action(self):
+        
+        
         match self.curr_action["type"]:
             case "conditional":
                 self.anim_count += 1
@@ -137,9 +141,11 @@ class Animation:
         self.completion_type = self.curr_action["type"]
         self.time = 0
         self.phase = 0
+        self.constanant_timer = 0
         self.action_hold_time = 0
         self.action_end_positions = {"Max":[], "Min":[]}
-
+        # print(str(self.curr_action["action"]) + " action took " + str(self.debug_timer) + " to complete")
+        self.debug_timer = 0
         if self.completion_type == "time":
             self.max_time = self.curr_action["time"]
             try:
@@ -207,24 +213,32 @@ class Animation:
             case 0:
                 for vert in self.obj.verts:
                     vert.target_position = [
-                        vert.local_position[0], self.obj.transform.origin_position[1]
+                        vert.local_position[0],
+                        0
                     ]
-                self.obj.in_transition = True
+            
+                self.obj.transition_timer = 0
                 self.obj.transition_duration = half_time
-                if completion >= 1:
-                    self.phase = 0.5
-                    self.constanant_timer = 0
+                self.obj.in_transition = True
+            
+                self.phase = 0.5
                 return False
+            
             case 0.5:
-                self.obj.set_shape_state(self.obj.shape_state)
-                if completion >= 1:
+                if not self.obj.in_transition:
+                    self.obj.set_shape_state(
+                        self.obj.shape_state,
+                        duration=half_time
+                    )
                     self.phase = 1
+            
                 return False
+            
             case 1:
                 if not self.obj.in_transition:
                     self.phase = 0
                     return True
-
+            
                 return False
         
         

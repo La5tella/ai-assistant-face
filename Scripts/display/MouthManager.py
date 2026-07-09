@@ -44,8 +44,8 @@ class MouthManager:
         self.mouth.active = True
         self.start_syllable()
     
-    def start_syllable(self):
-        self.time = 0
+    def start_syllable(self, initial_time=0):
+        self.time = initial_time
 
         if len(self.syllable_queue) == 0:
             self.curr_syllable = None
@@ -53,6 +53,10 @@ class MouthManager:
             return
 
         self.curr_syllable = self.syllable_queue.pop(0)
+
+        if self.curr_syllable["syllable"] == "wait":
+            return
+    
         syl_data = self.mouth_lib[self.curr_syllable["syllable"]]
         transition_time = self.curr_syllable["time"]
 
@@ -74,15 +78,28 @@ class MouthManager:
         self.mouth.action_index = 0
         self.mouth.anim.update_curr_action(action)
             
-        print("Sending action: " + action["action"] + " with time " + str(action["time"]) + " from syllable " + self.curr_syllable["syllable"])
+        #print("Sending action: " + action["action"] + " with time " + str(action["transition_time"]) + "/" + str(action["time"]) + " from syllable " + self.curr_syllable["syllable"])
     
     def transition_check(self):
         syllable_time_done = self.time >= self.curr_syllable["total_time"]
-        anim_done = self.mouth.anim.action_done or self.mouth.anim.action_hold
-        
+        if self.curr_syllable["syllable"] == "wait":
+            anim_done = True
+        else:
+            anim_done = self.mouth.anim.action_done or self.mouth.anim.action_hold
+        #print(
+        #    self.curr_syllable["syllable"],
+        #    "mouth_time", self.time,
+        #    "transition/total",
+        #    self.curr_syllable["time"],
+        #    self.curr_syllable["total_time"],
+        #    "anim_done", self.mouth.anim.action_done,
+        #    "hold", self.mouth.anim.action_hold,
+        #    "in_transition", self.mouth.in_transition
+        #    )
 
         if syllable_time_done and anim_done and self.curr_syllable is not None:
-            self.start_syllable()
+            overshoot = self.time - self.curr_syllable["total_time"]
+            self.start_syllable(overshoot)
 
 
     def update(self,dt):
@@ -90,7 +107,8 @@ class MouthManager:
             return
 
         self.time += dt
-        self.mouth.update(dt)
+        if self.curr_syllable["syllable"] != "wait":
+            self.mouth.update(dt)
         self.transition_check()
 
     def stfu(self):
