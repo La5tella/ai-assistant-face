@@ -50,7 +50,7 @@
                 "type":"time",
                 "time":0.25
             },
-        "hold_scale":[0.8,0.1]
+        "hold_scale":[0.8,0.3]
         },
     "m":{
         "shape_state":{

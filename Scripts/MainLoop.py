@@ -69,23 +69,23 @@ def main_loop(objCount):
         for event in events:
             if event.type == pygame.QUIT:
                 running = False
-        ren.screen.fill((0, 0, 0))
+        
         listen_for_input(command_queue)
         face_scene.update(dt)
-        for drawables in face_scene.drawables:
-            
-            pygame.draw.polygon(
-                ren.screen,
-                drawables.color,
-                drawables.verts
-            )
-            if drawables.debug:
-                face_scene.objects[drawables.id].draw_vert_debug(screen=ren)
+        
+        ren.screen.fill((0, 0, 0))
 
+        for drawable in face_scene.drawables:
+            
+            ren.draw_drawables(drawable)
+            if drawable.debug:
+                face_scene.objects[drawable.id].draw_vert_debug(screen=ren)
+
+        ren.post_processing()
+        
         for button in debug_buttons:
            button.draw(events)
 
-        ren.apply_crt()
         pygame.display.flip()
 
 

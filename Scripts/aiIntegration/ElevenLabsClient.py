@@ -2,9 +2,15 @@ import json
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_TTS_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"
+VOICE_DESIGN_MODEL_ID = "eleven_multilingual_ttv_v2"
+VOICE_DESIGN_SAMPLE_TEXT = (
+    "This is a short preview of the designed voice. It should sound clear, "
+    "natural, and expressive enough to judge the character."
+)
 
 
-def create_speak_command(text:str, debug:bool):
+def create_speak_command(text: str, debug: bool, voice_id: str | None = None):
     """
     Gathers raw text from an LLM input. Returns Mouth Anims/timings and Audio as 
     [
@@ -15,7 +21,7 @@ def create_speak_command(text:str, debug:bool):
     if debug:
         audio = build_debug_audio()
     else:
-        audio = normalize_audio_response(create_elevenlabs_audio(text))
+        audio = normalize_audio_response(create_elevenlabs_audio(text, voice_id))
     
     payload = process_audio(audio)
     #alignment = audio["alignment"]
@@ -222,17 +228,76 @@ def merge_syllable_timings(syllables, timings, min_duration=0.05):
 
     return merged
 
-def create_elevenlabs_audio(text: str):
-    from elevenlabs.client import ElevenLabs
-
-    api_key = load_api_key()
-    client = ElevenLabs(api_key=api_key)
+def create_elevenlabs_audio(text: str, voice_id: str | None = None):
+    client = create_elevenlabs_client()
 
     return client.text_to_speech.convert_with_timestamps(
         text=text,
-        voice_id="JBFqnCBsd6RMkjVDRZzb",
+        voice_id=voice_id or DEFAULT_TTS_VOICE_ID,
         model_id="eleven_multilingual_v2",
     )
+
+def create_elevenlabs_client():
+    from elevenlabs.client import ElevenLabs
+
+    return ElevenLabs(api_key=load_api_key())
+
+def create_voice_design_previews(voice_description: str):
+    voice_description = voice_description.strip()
+    if not voice_description:
+        raise ValueError("Voice description cannot be empty.")
+
+    client = create_elevenlabs_client()
+    voices = client.text_to_voice.design(
+        model_id=VOICE_DESIGN_MODEL_ID,
+        voice_description=voice_description,
+        text=VOICE_DESIGN_SAMPLE_TEXT,
+    )
+
+    previews = get_response_value(voices, "previews")
+    normalized_previews = []
+
+    for preview in previews:
+        generated_voice_id = get_response_value(preview, "generated_voice_id")
+        audio_base64 = get_response_value(preview, "audio_base_64", "audio_base64")
+        normalized_previews.append(
+            {
+                "generated_voice_id": generated_voice_id,
+                "audio_base64": audio_base64,
+            }
+        )
+
+    if not normalized_previews:
+        raise RuntimeError("ElevenLabs returned no voice design previews.")
+
+    return normalized_previews
+
+def add_voice_design_to_library(
+    generated_voice_id: str,
+    voice_description: str,
+    voice_name: str | None = None,
+):
+    generated_voice_id = generated_voice_id.strip()
+    voice_description = voice_description.strip()
+
+    if not generated_voice_id:
+        raise ValueError("Generated voice ID cannot be empty.")
+    if not voice_description:
+        raise ValueError("Voice description cannot be empty.")
+
+    client = create_elevenlabs_client()
+    resolved_voice_name = voice_name or build_voice_design_name(voice_description)
+    voice = client.text_to_voice.create(
+        voice_name=resolved_voice_name,
+        voice_description=voice_description,
+        generated_voice_id=generated_voice_id,
+    )
+
+    return {
+        "voice_id": get_response_value(voice, "voice_id"),
+        "voice_name": resolved_voice_name,
+        "generated_voice_id": generated_voice_id,
+    }
 
 def load_api_key() -> str:
     key_path = BASE_DIR / "API_KEYS.json"
@@ -323,3 +388,38 @@ def normalize_audio_response(audio):
             "character_end_times_seconds": audio.alignment.character_end_times_seconds,
         },
     }
+
+def build_voice_design_name(voice_description: str) -> str:
+    compact_description = " ".join(voice_description.split())
+    if not compact_description:
+        return "Designed voice"
+
+    return compact_description[:48].rstrip()
+
+def dump_response(response):
+    if isinstance(response, dict):
+        return response
+
+    if hasattr(response, "model_dump"):
+        return response.model_dump()
+
+    if hasattr(response, "dict"):
+        return response.dict()
+
+    return None
+
+def get_response_value(response, *names):
+    response_dict = dump_response(response)
+    if response_dict is not None:
+        for name in names:
+            if name in response_dict:
+                return response_dict[name]
+
+    for name in names:
+        if hasattr(response, name):
+            return getattr(response, name)
+
+    raise AttributeError(
+        f"Response {type(response).__name__} does not expose any of: "
+        f"{', '.join(names)}"
+    )

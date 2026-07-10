@@ -1,4 +1,4 @@
   Add a transition for when expression data changes. Currently, objects snap back to current state.
   Actually create new expressions.
   Implement eye_look_left and eye_look_right
-  Figure out how to make mouth already open transition straight into the next shape key if not a constantant. (a->e vs a->b)
+  Fix eye blinking
