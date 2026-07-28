@@ -64,6 +64,7 @@ def start_listener(
 
     Expected wire format:
         {"type": "expression", "name": "happy"}\n
+        {"type": "face_state", "name": "thinking"}\n
         {"type": "speak", "syllables": [["a", 0.22], ["m", 0.12]]}\n
 
     The listener accepts one client at a time. If the client disconnects, the
@@ -180,7 +181,13 @@ def parse_command_line(line: str) -> dict[str, Any] | None:
         return None
 
     command_type = payload.get("type")
-    if command_type not in {"expression", "speak", "play", "stop_speech"}:
+    if command_type not in {
+        "expression",
+        "face_state",
+        "speak",
+        "play",
+        "stop_speech",
+    }:
         print(f"Listener ignored unknown command type: {command_type}")
         return None
 

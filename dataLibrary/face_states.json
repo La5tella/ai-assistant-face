@@ -48,21 +48,28 @@
     },
     "thinking": {
       "uses_expression": false,
+      "sequence_delay": 0.2,
       "roles": {
         "dot_left": {
           "position": [300, 420],
+          "shape_state": "Circle",
+          "scale": [20, 20],
           "active": true,
           "controller": "thinking",
           "sequence": 0
         },
         "dot_middle": {
           "position": [360, 420],
+          "shape_state": "Circle",
+          "scale": [20, 20],
           "active": true,
           "controller": "thinking",
           "sequence": 1
         },
         "dot_right": {
           "position": [420, 420],
+          "shape_state": "Circle",
+          "scale": [20, 20],
           "active": true,
           "controller": "thinking",
           "sequence": 2

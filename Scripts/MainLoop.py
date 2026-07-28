@@ -101,6 +101,9 @@ def listen_for_input(command_queue):
             case "expression":
                 face_scene.set_expression(command.get("name", "neutral"))
 
+            case "face_state":
+                face_scene.set_face_state(command.get("name", "default"))
+
             case "speak":
                 syllables = [
                     {"syllable": name, "time": duration, "total_time":total_time}

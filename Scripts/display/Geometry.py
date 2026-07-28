@@ -121,10 +121,16 @@ class FaceObject:
         """
         This should update the animation's time value
         """
-        if value != None:
+        if value is not None:
             self.action_queue = self.anim_dict["anims"][value]
             self.action_index = 0
             self.anim.update_curr_action(self.action_queue[self.action_index])
+            self.anim_offset = [0,0]
+        else:
+            self.action_queue = []
+            self.action_index = 0
+            self.anim.curr_action = None
+            self.anim.start_delay = 0
             self.anim_offset = [0,0]
             
         self._curr_anim = value

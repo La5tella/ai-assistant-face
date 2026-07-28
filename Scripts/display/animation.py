@@ -9,6 +9,7 @@ class Animation:
         self.completion_type = "time"
         self.anim_count = 0
         self.phase = 0
+        self.start_delay = 0
         
         self.action_done = False
         self.action_hold = False
@@ -31,6 +32,13 @@ class Animation:
 
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
+        if self.start_delay > 0:
+            delayed_time = min(dt, self.start_delay)
+            self.start_delay -= delayed_time
+            dt -= delayed_time
+            if dt <= 0:
+                return
+
         self.debug_timer +=dt
         if self.action_hold:
             self.hold_action(dt)
@@ -48,6 +56,8 @@ class Animation:
                     done = self.blink(dt)
                 case "look":
                     done = self.look(self.look_data, dt)
+                case "think":
+                    done = self.think(dt)
                 case "constanant_close":
                     done = self.constanant_close(dt)
             if done:
@@ -110,6 +120,25 @@ class Animation:
     def look(self, look_data, dt):
         print(f"*looks in direction {look_data}*")
 
+    def think(self, dt):
+        """Move one thinking dot through a continuous, smoothly looping hop."""
+        cycle_duration = max(
+            float(self.curr_action.get("transition_time", 0.6)),
+            0.001,
+        )
+        amplitude = float(self.curr_action.get("amplitude", self.amplitude))
+
+        self.phase = (
+            self.phase + (math.tau * dt / cycle_duration)
+        ) % math.tau
+        self.obj.anim_offset[1] = (
+            -amplitude * (1 - math.cos(self.phase)) * 0.5
+        )
+
+        # Thinking is an ambient animation. The manager stops it explicitly
+        # when another face state takes ownership of the eyes.
+        return False
+
     def time_check(self):
         return self.time >= self.max_time
 
@@ -138,6 +167,7 @@ class Animation:
         self.obj.anim_offset=[0,0]
         self.action_hold = False
         self.action_done = False
+        self.start_delay = 0
         self.completion_type = self.curr_action["type"]
         self.time = 0
         self.phase = 0
@@ -239,5 +269,3 @@ class Animation:
                     return True
             
                 return False
-        
-        

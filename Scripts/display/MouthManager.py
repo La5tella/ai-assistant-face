@@ -66,6 +66,7 @@ class MouthManager:
             duration=transition_time
         )
 
+        #todo -- Transfer this hardcoded data to a .json. Maybe mouth_shapes?
         action = syl_data["anim"].copy()
         action["hold_on_complete"] = True
         action["hold_range"] = [0.5, 1.0]
