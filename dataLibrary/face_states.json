@@ -1,0 +1,73 @@
+{
+    "version":2,
+    "default_state":"default",
+    "states": {
+    "default": {
+      "uses_expression": true,
+      "roles": {
+        "mouth": {
+          "position": [360, 540],
+          "active": true,
+          "controller": "mouth"
+        },
+        "left_eye": {
+          "position": [180, 360],
+          "active": true,
+          "controller": "eye",
+          "ambient_anim": "eye_neutral"
+        },
+        "right_eye": {
+          "position": [540, 360],
+          "active": true,
+          "controller": "eye",
+          "ambient_anim": "eye_neutral"
+        }
+      }
+    },
+    "speaking": {
+      "uses_expression": true,
+      "roles": {
+        "mouth": {
+          "position": [360, 540],
+          "active": true,
+          "controller": "mouth"
+        },
+        "left_eye": {
+          "position": [180, 360],
+          "active": true,
+          "controller": "eye",
+          "ambient_anim": "eye_neutral"
+        },
+        "right_eye": {
+          "position": [540, 360],
+          "active": true,
+          "controller": "eye",
+          "ambient_anim": "eye_neutral"
+        }
+      }
+    },
+    "thinking": {
+      "uses_expression": false,
+      "roles": {
+        "dot_left": {
+          "position": [300, 420],
+          "active": true,
+          "controller": "thinking",
+          "sequence": 0
+        },
+        "dot_middle": {
+          "position": [360, 420],
+          "active": true,
+          "controller": "thinking",
+          "sequence": 1
+        },
+        "dot_right": {
+          "position": [420, 420],
+          "active": true,
+          "controller": "thinking",
+          "sequence": 2
+        }
+      }
+    }
+  }
+}

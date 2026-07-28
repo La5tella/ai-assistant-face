@@ -1,17 +1,18 @@
-import pygame
 from Scripts.display.MouthManager import MouthManager
-import math
 from Scripts.display.animation import Animation
 from Scripts.display.Geometry import Vert, Transform, FaceObject
+from dataclasses import dataclass
 
 class FaceScene:
     """Coordinates high-level face expression commands across pooled face objects."""
     
-    def __init__(self, anim_library, expression_data, objCount, RESOLUTION):
+    def __init__(self, anim_library, expression_data, face_state_data, objCount, RESOLUTION):
         """Store the drawable objects and expression library used by command handlers."""
         self.expression_data = expression_data
+        self.face_state_data = face_state_data
         self.current_expression = None
         self.objects = []
+        
 
         self.drawables = []    
         for i in range(objCount):
@@ -30,8 +31,10 @@ class FaceScene:
                 )
             )
         
-        self.mouth_manager = MouthManager(self.objects[0])
-        """objects[0] will always be mouth."""
+        self.roles = Roles()
+        
+        self.mouth_manager = MouthManager(self.objects[self.roles.mouth_id])
+        
         
 
     def handle_ai_command(self, data):
@@ -65,32 +68,66 @@ class FaceScene:
 
         self.current_expression = expression_name
 
-        for obj_id, state_data in expression.items():
-            obj_index = int(obj_id)
+        for role in expression:
+            obj_index = getattr(self.roles, role + "_id")
             if obj_index >= len(self.objects):
                 continue
-
+            
             self.apply_object_state(
                 self.objects[obj_index],
-                state_data,
+                expression[role],
                 duration,
                 easing
             )
+            self.objects[obj_index].active=True
 
         return True
+
+    def set_face_state(self, face_state_name, duration=0.25, easing="ease"):
+            """Apply one named expression from the JSON state library to all listed objects."""
+            
+            states = self.face_state_data.get("states", {})
+            if states is {}:
+                print("Unable to load state. Maybe check .json path?")
+            state = states.get(face_state_name)
+            if state is None:
+                print(f"Unknown expression: {face_state_name}")
+                return False
+    
+            self.current_expression = face_state_name
+
+            roles =state["roles"]
+            for role in roles:
+                obj_index = getattr(self.roles, role + "_id")
+                if obj_index >= len(self.objects):
+                    continue
+                
+                self.apply_object_state(
+                    self.objects[obj_index],
+                    roles[role],
+                    duration,
+                    easing
+                )
+                self.objects[obj_index].active=True
+    
+            return True
 
     def apply_object_state(self, obj, state_data, duration=0.25, easing="ease"):
         """Apply one object's state data and start its shape animation if needed."""
         shape_state = state_data.get("shape_state")   
 
         for attr, value in state_data.items():
-            if attr == "transform":
-                for atr, val in value.items():
-                    setattr(obj.transform, atr, val)
-            elif attr == 'anim':
-                obj.curr_anim = value
-            else:
-                setattr(obj, attr, value)
+            match attr:
+                case "scale":
+                    obj.transform.scale = value
+                case "rotation":
+                    obj.transform.rotation = value
+                case "position":
+                    obj.transform.origin_position = value
+                case "active":
+                    obj.active = value
+                case "ambient_anim":
+                    obj.curr_anim = value
         
         if shape_state is not None:
             obj.set_shape_state(shape_state, duration, easing)
@@ -115,3 +152,9 @@ class FaceScene:
                 self.drawables.append(obj.to_drawable())
 
         
+@dataclass
+class Roles:
+    def __init__(self, mouth=0, l_eye=1,r_eye=2):
+        self.mouth_id = mouth
+        self.left_eye_id = l_eye
+        self.right_eye_id = r_eye

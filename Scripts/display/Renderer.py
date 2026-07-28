@@ -96,3 +96,4 @@ class Renderer:
         )
 
         self.screen.blit(restore_surface, (0, 0))
+        

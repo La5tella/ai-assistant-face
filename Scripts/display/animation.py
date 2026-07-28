@@ -207,7 +207,6 @@ class Animation:
         half_time = self.curr_action["transition_time"] * 0.5
         
         self.constanant_timer += dt
-        completion = self.constanant_timer / half_time
         
         match self.phase:
             case 0:

@@ -406,7 +406,8 @@ class FaceObject:
         return (
             vert[0] + self.transform.origin_position[0] + self.anim_offset[0],
             vert[1] + self.transform.origin_position[1] + self.anim_offset[1],
-        )
+        ) 
+
 
 
     def lerp(self, a, b, t):
@@ -444,3 +445,4 @@ class FaceObject:
         for i, vert in enumerate(self.verts):
             text_surface = screen.fonts[0].render(str(i), True, (0, 255, 0))
             screen.screen.blit(text_surface, self.local_to_screen(vert.local_position))
+

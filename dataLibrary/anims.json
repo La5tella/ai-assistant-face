@@ -10,21 +10,17 @@
             {
                 "action":"blink", 
                 "count":1, 
-                "type":"time", 
-                "time":0.25
+                "type":"time",
+                "time":0.25, 
+                "transition_time":0.25
             }
         ],
-        "eye_thinking": [
-            {
-                "action":"hover", 
-                "count":4, 
-                "type":"conditional"
-            }, 
+        "thinking": [ 
             {
                 "action":"think", 
                 "count":1, 
                 "type":"conditional", 
-                "time_transition": 0.5, 
+                "transition_time": 0.5, 
                 "time_hold":2.0
             }
         ],
@@ -33,7 +29,7 @@
                 "action":"look", 
                 "count":1, 
                 "type":"conditional", 
-                "time_transition": 0.5, 
+                "transition_time": 0.5, 
                 "time_hold":2.0
             }
         ],
@@ -42,7 +38,7 @@
                 "action":"look", 
                 "count":1, 
                 "type":"conditional", 
-                "time_transition": 0.5, 
+                "transition_time": 0.5, 
                 "time_hold":2.0
             }
         ],
@@ -50,8 +46,9 @@
             {
                 "action":"static", 
                 "count":1, 
-                "type":"time", 
-                "time":0.5
+                "type":"time",
+                "time":0.25, 
+                "transition_time":0.5
             }
         ]
     }

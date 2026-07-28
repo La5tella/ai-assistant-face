@@ -1,122 +1,40 @@
 {
-    "version":1,
+    "version":"2",
     "default_state":"neutral",
-    "states":{
-        "neutral":{
-            "0":{
-                "transform":{
-                    "origin_position":[360, 540.0],
-                    "rotation": 180,
-                    "scale":[100,100]
-                },
-                "shape_state":"Half-Circle",
-                "active": false,
-                "anim":"anim_test"
-                
-            },
-            "1":{
-                "transform":{
-                    "origin_position":[180.0, 360.0],
-                    "rotation":0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            },
-            "2":{
-                "transform":{
-                    "origin_position":[540.0, 360.0],
-                    "rotation":0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            }
+    "states": {
+      "neutral": {
+            "mouth": {
+              "shape_state": "Half-Circle",
+              "scale": [100, 100],
+              "rotation": 180
         },
-        "happy":{
-            "0":{
-                "transform":{
-                    "origin_position":[360, 540.0],
-                    "rotation": 180,
-                    "scale":[100,100]
-                },
-                "shape_state":"Half-Circle",
-                "active": false,
-                "anim":"anim_test"
-                
-            },
-            "1":{
-                "transform":{
-                    "origin_position":[180.0, 360.0],
-                    "rotation":0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Half-Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            },
-            "2":{
-                "transform":{
-                    "origin_position":[540.0, 360.0],
-                    "rotation":0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Half-Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            }
+            "left_eye": {
+              "shape_state": "Circle",
+              "scale": [100, 100],
+              "rotation": 0
         },
-        "sad":{
-            "0":{
-                "transform":{
-                    "origin_position":[360, 540.0],
-                    "rotation": 0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Half-Circle",
-                "active": false,
-                "anim":"anim_test"
-                
-            },
-            "1":{
-                "transform":{
-                    "origin_position":[180.0, 360.0],
-                    "rotation":0,
-                    "scale":[-100,-100]
-                },
-                "shape_state":"Half-Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            },
-            "2":{
-                "transform":{
-                    "origin_position":[540.0, 360.0],
-                    "rotation":0,
-                    "scale":[-100,-100]
-                },
-                "shape_state":"Half-Circle",
-                "active": true,
-                "anim":"eye_neutral"
-            }
-        },
-        "excited":{},
-        "thinking":{},
-        "test_state":
-        {
-            "0":{
-                "transform":{
-                    "origin_position":[180.0, 360.0],
-                    "rotation":0,
-                    "scale":[100,100]
-                },
-                "shape_state":"Circle",
-                "active": true,
-                "anim":"anim_test"
-            }
+            "right_eye": {
+              "shape_state": "Circle",
+              "scale": [100, 100],
+              "rotation": 0
         }
+      },
+      "happy": {
+            "mouth": {
+              "shape_state": "Half-Circle",
+              "scale": [100, 100],
+              "rotation": 180
+            },
+            "left_eye": {
+              "shape_state": "Half-Circle",
+              "scale": [100, 100],
+              "rotation": 0
+            },
+            "right_eye": {
+              "shape_state": "Half-Circle",
+              "scale": [100, 100],
+              "rotation": 0
+        }
+      }
     }
-
-
 }

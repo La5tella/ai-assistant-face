@@ -1,0 +1,122 @@
+{
+    "version":1,
+    "default_state":"neutral",
+    "states":{
+        "neutral":{
+            "0":{
+                "transform":{
+                    "origin_position":[360, 540.0],
+                    "rotation": 180,
+                    "scale":[100,100]
+                },
+                "shape_state":"Half-Circle",
+                "active": false,
+                "anim":"anim_test"
+                
+            },
+            "1":{
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            },
+            "2":{
+                "transform":{
+                    "origin_position":[540.0, 360.0],
+                    "rotation":0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            }
+        },
+        "happy":{
+            "0":{
+                "transform":{
+                    "origin_position":[360, 540.0],
+                    "rotation": 180,
+                    "scale":[100,100]
+                },
+                "shape_state":"Half-Circle",
+                "active": false,
+                "anim":"anim_test"
+                
+            },
+            "1":{
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Half-Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            },
+            "2":{
+                "transform":{
+                    "origin_position":[540.0, 360.0],
+                    "rotation":0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Half-Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            }
+        },
+        "sad":{
+            "0":{
+                "transform":{
+                    "origin_position":[360, 540.0],
+                    "rotation": 0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Half-Circle",
+                "active": false,
+                "anim":"anim_test"
+                
+            },
+            "1":{
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0,
+                    "scale":[-100,-100]
+                },
+                "shape_state":"Half-Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            },
+            "2":{
+                "transform":{
+                    "origin_position":[540.0, 360.0],
+                    "rotation":0,
+                    "scale":[-100,-100]
+                },
+                "shape_state":"Half-Circle",
+                "active": true,
+                "anim":"eye_neutral"
+            }
+        },
+        "excited":{},
+        "thinking":{},
+        "test_state":
+        {
+            "0":{
+                "transform":{
+                    "origin_position":[180.0, 360.0],
+                    "rotation":0,
+                    "scale":[100,100]
+                },
+                "shape_state":"Circle",
+                "active": true,
+                "anim":"anim_test"
+            }
+        }
+    }
+
+
+}

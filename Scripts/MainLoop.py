@@ -1,5 +1,5 @@
 from Scripts.display.Renderer import Renderer 
-from Scripts.display.FaceScene import FaceObject, FaceScene, Transform
+from Scripts.display.FaceScene import FaceScene
 from Scripts.display.UI import Button
 import pygame
 import json
@@ -24,7 +24,8 @@ with open(BASE_DIR / "dataLibrary/expressions.json", "r") as file:
     expression_data = json.load(file)
 with open(BASE_DIR / "dataLibrary/anims.json", "r") as file:
     anim_library = json.load(file)
-
+with open(BASE_DIR / "dataLibrary/face_states.json", "r") as file:
+    face_state_data = json.load(file)
 
 
 def cycle_all_shape_states():
@@ -56,8 +57,9 @@ def main_loop(objCount):
     
     debug_buttons = [debug_button, debug_button_1]
 
-    face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, objCount=objCount, RESOLUTION=RESOLUTION)
+    face_scene = FaceScene(anim_library=anim_library, expression_data=expression_data, face_state_data=face_state_data, objCount=objCount, RESOLUTION=RESOLUTION)
     face_scene.set_expression(expression_data["default_state"], duration=0)
+    face_scene.set_face_state(face_state_data["default_state"], duration=0)
     audio_player = AudioPlayer()
 
     command_queue = queue.Queue()
@@ -88,24 +90,6 @@ def main_loop(objCount):
 
         pygame.display.flip()
 
-
-def apply_face_state():
-    if face_scene is not None:
-        face_scene.set_expression(expression_data["default_state"], duration=0)
-        return
-
-    default_state_name = expression_data["default_state"]
-    default_state = expression_data["states"][default_state_name]
-
-    for obj_id, state_data in default_state.items():
-        obj = face_scene.objects[int(obj_id)]
-
-        for attr, value in state_data.items():
-            if attr == "position":
-                obj.transform.origin_position = value
-            else:
-                setattr(obj, attr, value)
-    print("hello")
 
 def activate_mouth():
     face_scene.mouth_manager.activate_speak()      
