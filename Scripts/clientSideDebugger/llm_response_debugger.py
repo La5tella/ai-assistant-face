@@ -26,6 +26,26 @@ from Scripts.aiIntegration.ElevenLabsClient import (
 VOICE_LIBRARY_PATH = REPO_ROOT / "dataLibrary" / "voice_library.json"
 
 
+def load_expression_names() -> list[str]:
+    expressions_path = REPO_ROOT / "dataLibrary" / "expressions.json"
+
+    with open(expressions_path, "r") as file:
+        expression_data = json.load(file)
+
+    states = expression_data.get("states")
+    if not isinstance(states, dict) or not states:
+        raise ValueError(f"No expression states found in {expressions_path}.")
+
+    default_state = expression_data.get("default_state")
+    expression_names = list(states.keys())
+
+    if default_state in states:
+        expression_names.remove(default_state)
+        return [default_state, *expression_names]
+
+    return expression_names
+
+
 def load_face_state_names() -> list[str]:
     face_states_path = REPO_ROOT / "dataLibrary" / "face_states.json"
 
@@ -130,6 +150,8 @@ class LLMResponseDebugger(tk.Tk):
         self.debug_elevenlabs_var = tk.BooleanVar(value=True)
         self.face_state_names = load_face_state_names()
         self.face_state_var = tk.StringVar(value=self.face_state_names[0])
+        self.expression_names = load_expression_names()
+        self.expression_var = tk.StringVar(value=self.expression_names[0])
         self.saved_voice_var = tk.StringVar(value="")
         self.saved_voice_lookup = {}
         self.speech_voice_id_var = tk.StringVar(value=DEFAULT_TTS_VOICE_ID)
@@ -226,6 +248,20 @@ class LLMResponseDebugger(tk.Tk):
             width=24,
         ).grid(row=0, column=1, sticky="w", padx=(6, 0))
 
+        ttk.Label(speech_options_frame, text="Expression").grid(
+            row=1,
+            column=0,
+            sticky="w",
+            pady=(6, 0),
+        )
+        ttk.Combobox(
+            speech_options_frame,
+            textvariable=self.expression_var,
+            values=self.expression_names,
+            state="readonly",
+            width=24,
+        ).grid(row=1, column=1, sticky="w", padx=(6, 0), pady=(6, 0))
+
         ttk.Label(speech_options_frame, text="Voice ID").grid(
             row=0,
             column=2,
@@ -239,7 +275,7 @@ class LLMResponseDebugger(tk.Tk):
         ).grid(row=0, column=3, sticky="ew", padx=(6, 0))
 
         ttk.Label(speech_options_frame, text="Saved Voice").grid(
-            row=1,
+            row=2,
             column=0,
             sticky="w",
             pady=(6, 0),
@@ -251,7 +287,7 @@ class LLMResponseDebugger(tk.Tk):
             state="readonly",
         )
         self.saved_voice_combo.grid(
-            row=1,
+            row=2,
             column=1,
             columnspan=3,
             sticky="ew",
@@ -284,12 +320,20 @@ class LLMResponseDebugger(tk.Tk):
         self.face_state_button.grid(row=0, column=0, sticky="w")
         self.action_buttons.append(self.face_state_button)
 
+        self.expression_button = ttk.Button(
+            button_frame,
+            text="Send Expression",
+            command=self._send_expression,
+        )
+        self.expression_button.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        self.action_buttons.append(self.expression_button)
+
         self.send_button = ttk.Button(
             button_frame,
             text="Send Speak Command",
             command=self._send_speak_command,
         )
-        self.send_button.grid(row=0, column=1, sticky="w", padx=(8, 0))
+        self.send_button.grid(row=0, column=2, sticky="w", padx=(8, 0))
         self.action_buttons.append(self.send_button)
 
         self.stop_button = ttk.Button(
@@ -297,14 +341,14 @@ class LLMResponseDebugger(tk.Tk):
             text="Stop Speech",
             command=self._send_stop_speech,
         )
-        self.stop_button.grid(row=0, column=2, sticky="w", padx=(8, 0))
+        self.stop_button.grid(row=0, column=3, sticky="w", padx=(8, 0))
         self.action_buttons.append(self.stop_button)
 
         ttk.Button(
             button_frame,
             text="Clear",
             command=lambda: self.response_text.delete("1.0", "end"),
-        ).grid(row=0, column=3, sticky="w", padx=(8, 0))
+        ).grid(row=0, column=4, sticky="w", padx=(8, 0))
 
     def _build_voice_design_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
@@ -405,6 +449,13 @@ class LLMResponseDebugger(tk.Tk):
             lambda: self._create_and_send_face_state_command(face_state_name),
         )
 
+    def _send_expression(self) -> None:
+        expression_name = self.expression_var.get()
+        self._run_in_worker(
+            f"Sending {expression_name} expression...",
+            lambda: self._create_and_send_expression_command(expression_name),
+        )
+
     def _send_stop_speech(self) -> None:
         self._run_in_worker(
             "Sending stop command...",
@@ -483,9 +534,11 @@ class LLMResponseDebugger(tk.Tk):
     def _create_and_send_speak_command(self, text: str) -> None:
         debug_elevenlabs = self.debug_elevenlabs_var.get()
         face_state_name = self.face_state_var.get()
+        expression_name = self.expression_var.get()
         voice_id = self.speech_voice_id_var.get().strip() or None
         commands = [
             {"type": "face_state", "name": face_state_name},
+            {"type": "expression", "name": expression_name},
             *create_speak_command(text, debug=debug_elevenlabs, voice_id=voice_id),
         ]
         send_commands(
@@ -495,6 +548,7 @@ class LLMResponseDebugger(tk.Tk):
         )
         self.log_queue.put(
             f"Sent {len(commands)} command(s). Face state={face_state_name}. "
+            f"Expression={expression_name}. "
             f"Voice ID={voice_id}. Debug ElevenLabs={debug_elevenlabs}"
         )
 
@@ -505,6 +559,14 @@ class LLMResponseDebugger(tk.Tk):
             port=self.port_var.get(),
         )
         self.log_queue.put(f"Sent face state: {face_state_name}")
+
+    def _create_and_send_expression_command(self, expression_name: str) -> None:
+        send_commands(
+            [{"type": "expression", "name": expression_name}],
+            host=self.host_var.get(),
+            port=self.port_var.get(),
+        )
+        self.log_queue.put(f"Sent expression: {expression_name}")
 
     def _create_voice_design_previews(self, voice_description: str) -> None:
         previews = create_voice_design_previews(voice_description)
