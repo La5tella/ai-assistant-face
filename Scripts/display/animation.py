@@ -10,9 +10,11 @@ class Animation:
         self.anim_count = 0
         self.phase = 0
         self.start_delay = 0
+        self.time = 0
         
         self.action_done = False
         self.action_hold = False
+        self.action_hold_time = 0
         self.action_end_positions = {"Max":[], "Min":[]}
 
         """'time' or 'conditional', where conditional completion is defined by anim functions, and time completion is when an action takes a specific time."""
@@ -23,15 +25,39 @@ class Animation:
             self.curr_action = None
         
         #per-anim data
-        self.look_data = [1,1]
+        self.look_action = None
+        self.look_start_position = [0.0, 0.0]
+        self.look_time = 0.0
         self.amplitude = 10
         self.speed = speed
 
         self.constanant_timer = 0
         self.debug_timer = 0
 
+    def reset_runtime(self):
+        """Clear the current action without changing the object's visible shape."""
+        self.curr_action = None
+        self.transition_time = 0.025
+        self.max_time = 1
+        self.completion_type = "time"
+        self.anim_count = 0
+        self.phase = 0
+        self.start_delay = 0
+        self.time = 0
+        self.action_done = False
+        self.action_hold = False
+        self.action_hold_time = 0
+        self.action_end_positions = {"Max": [], "Min": []}
+        self.constanant_timer = 0
+        self.debug_timer = 0
+        self.obj.anim_offset = [0.0, 0.0]
+
     def update(self, dt):
         """Before calling, make sure to update the corresponding value. (e.g. Hover needs anim.amplitude to update)"""
+        # Gaze is a parallel animation channel so eye hover/blink actions can
+        # continue while the eyes move toward an AI-provided target.
+        self.update_look(dt)
+
         if self.start_delay > 0:
             delayed_time = min(dt, self.start_delay)
             self.start_delay -= delayed_time
@@ -55,7 +81,7 @@ class Animation:
                 case "blink":
                     done = self.blink(dt)
                 case "look":
-                    done = self.look(self.look_data, dt)
+                    done = self.look(self.curr_action, dt)
                 case "think":
                     done = self.think(dt)
                 case "constanant_close":
@@ -117,8 +143,76 @@ class Animation:
 
             return False
 
+    def start_look(self, action):
+        """Start or replace a gaze transition from an animation action."""
+        target_offset = action.get("target_offset")
+        if (
+            not isinstance(target_offset, (list, tuple))
+            or len(target_offset) != 2
+        ):
+            raise ValueError("look action requires a two-item target_offset")
+
+        transition_time = max(float(action.get("transition_time", 0.25)), 0.0)
+        self.look_action = dict(action)
+        self.look_action["target_offset"] = [
+            float(target_offset[0]),
+            float(target_offset[1]),
+        ]
+        self.look_action["transition_time"] = transition_time
+        self.look_start_position = self.obj.look_offset.copy()
+        self.look_time = 0.0
+
+        if transition_time == 0:
+            self.obj.look_offset = self.look_action["target_offset"].copy()
+            self.look_action = None
+
+    def update_look(self, dt):
+        """Lerp the object's gaze offset without interrupting its ambient action."""
+        if self.look_action is None:
+            return
+
+        transition_time = self.look_action["transition_time"]
+        self.look_time = min(self.look_time + dt, transition_time)
+        completion = self.look_time / transition_time
+        completion = self.obj.ease_value(
+            self.look_action.get("easing", "ease"),
+            completion,
+        )
+        target_offset = self.look_action["target_offset"]
+
+        self.obj.look_offset = [
+            self.obj.lerp(
+                self.look_start_position[axis],
+                target_offset[axis],
+                completion,
+            )
+            for axis in range(2)
+        ]
+
+        if self.look_time >= transition_time:
+            self.obj.look_offset = target_offset.copy()
+            self.look_action = None
+
+    def clear_look(self, reset_position=True):
+        """Cancel gaze ownership, optionally returning the object to center."""
+        self.look_action = None
+        self.look_time = 0.0
+        if reset_position:
+            self.obj.look_offset = [0.0, 0.0]
+        self.look_start_position = self.obj.look_offset.copy()
+
     def look(self, look_data, dt):
-        print(f"*looks in direction {look_data}*")
+        """Run a named look action through the same gaze channel."""
+        if self.phase == 0:
+            self.start_look(look_data)
+            self.update_look(dt)
+            self.phase = 1
+
+        if self.look_action is None:
+            self.phase = 0
+            return True
+
+        return False
 
     def think(self, dt):
         """Move one thinking dot through a continuous, smoothly looping hop."""

@@ -19,6 +19,23 @@ class RossbotAgentClient:
             {"type": "speak", "syllables": mouth_cues}, {"type":"play","audio":audio}
         ])
 
+    def look_at(self, target, duration=0.25, easing="ease"):
+        """Send a normalized gaze target without coupling the AI to pygame."""
+        if (
+            not isinstance(target, (list, tuple))
+            or len(target) != 2
+        ):
+            raise ValueError("target must be a two-item [x, y] list")
+
+        self.command_client.send_commands([
+            {
+                "type": "look",
+                "target": [target[0], target[1]],
+                "duration": duration,
+                "easing": easing,
+            }
+        ])
+
         
 
 class debug_screen():

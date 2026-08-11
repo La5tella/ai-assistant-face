@@ -99,6 +99,13 @@ class FaceObject:
         self.action_index = 0
         self.action_queue = []
         self.anim_offset = [0,0]
+        self.look_offset = [0.0, 0.0]
+        self.position_offset = [0.0, 0.0]
+        self.position_transition_start = [0.0, 0.0]
+        self.position_transition_timer = 0.0
+        self.position_transition_duration = 0.0
+        self.position_ease_type = "ease"
+        self.position_in_transition = False
         self.anim = Animation(self)
         
 
@@ -129,11 +136,73 @@ class FaceObject:
         else:
             self.action_queue = []
             self.action_index = 0
-            self.anim.curr_action = None
-            self.anim.start_delay = 0
-            self.anim_offset = [0,0]
+            self.anim.reset_runtime()
             
         self._curr_anim = value
+
+    def preserve_animation_offset(self):
+        """Move the current ambient offset into the placement transition channel."""
+        self.position_offset = [
+            self.position_offset[axis] + self.anim_offset[axis]
+            for axis in range(2)
+        ]
+        self.anim_offset = [0.0, 0.0]
+
+    def set_origin_position(self, position, duration=0.25, easing="ease"):
+        """Blend from the current rendered origin to a new screen position."""
+        if not isinstance(position, (list, tuple)) or len(position) != 2:
+            raise ValueError("origin position must contain exactly two values")
+
+        current_position = [
+            float(self.transform.origin_position[axis]) + self.position_offset[axis]
+            for axis in range(2)
+        ]
+        target_position = [float(position[0]), float(position[1])]
+        duration = max(float(duration), 0.0)
+
+        self.transform.origin_position = target_position
+        self.position_offset = [
+            current_position[axis] - target_position[axis]
+            for axis in range(2)
+        ]
+        self.position_transition_start = self.position_offset.copy()
+        self.position_transition_timer = 0.0
+        self.position_transition_duration = duration
+        self.position_ease_type = easing
+        self.position_in_transition = duration > 0 and any(
+            abs(offset) >= 0.01 for offset in self.position_offset
+        )
+
+        if not self.position_in_transition:
+            self.position_offset = [0.0, 0.0]
+
+    def update_origin_position(self, dt):
+        if not self.position_in_transition:
+            return
+
+        self.position_transition_timer = min(
+            self.position_transition_timer + dt,
+            self.position_transition_duration,
+        )
+        completion = (
+            self.position_transition_timer / self.position_transition_duration
+        )
+        completion = self.ease_value(self.position_ease_type, completion)
+        self.position_offset = [
+            self.lerp(start, 0.0, completion)
+            for start in self.position_transition_start
+        ]
+
+        if self.position_transition_timer >= self.position_transition_duration:
+            self.position_offset = [0.0, 0.0]
+            self.position_in_transition = False
+
+    def clear_position_transition(self):
+        self.position_offset = [0.0, 0.0]
+        self.position_transition_start = [0.0, 0.0]
+        self.position_transition_timer = 0.0
+        self.position_transition_duration = 0.0
+        self.position_in_transition = False
         
     
     @property
@@ -393,7 +462,7 @@ class FaceObject:
     #---------------End Shape State Orientation Functions---------------
     #------------------------Animation Functions------------------------
     def update(self, dt):
-        
+        self.update_origin_position(dt)
         self.update_shape_state(dt=dt)
         self.anim.update(dt=dt)
         
@@ -410,8 +479,16 @@ class FaceObject:
 
     def local_to_screen(self, vert):
         return (
-            vert[0] + self.transform.origin_position[0] + self.anim_offset[0],
-            vert[1] + self.transform.origin_position[1] + self.anim_offset[1],
+            vert[0]
+            + self.transform.origin_position[0]
+            + self.position_offset[0]
+            + self.anim_offset[0]
+            + self.look_offset[0],
+            vert[1]
+            + self.transform.origin_position[1]
+            + self.position_offset[1]
+            + self.anim_offset[1]
+            + self.look_offset[1],
         ) 
 
 

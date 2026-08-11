@@ -4,6 +4,7 @@
     "states": {
     "default": {
       "uses_expression": true,
+      "expression": "neutral",
       "roles": {
         "mouth": {
           "position": [360, 540],

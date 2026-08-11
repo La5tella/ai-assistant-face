@@ -5,3 +5,5 @@ AICode/*
 */__pycache__
 */*/__pycache__
 tests/*
+!tests/test_eye_look.py
+!tests/test_default_reset.py

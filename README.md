@@ -1,6 +1,6 @@
 # ai-assistant-face
 
-`ai-assistant-face` is a Python/Pygame prototype for rendering an animated assistant face from polygon meshes. A fixed pool of reusable `FaceObject` instances is driven by JSON-defined display modes, expressions, ambient animations, and mouth shapes. Local TCP commands can change the face mode, change its expression, drive lip sync, and play generated audio.
+`ai-assistant-face` is a Python/Pygame prototype for rendering an animated assistant face from polygon meshes. A fixed pool of reusable `FaceObject` instances is driven by JSON-defined display modes, expressions, ambient animations, and mouth shapes. Local TCP commands can change the face mode, change its expression, move its gaze, drive lip sync, and play generated audio.
 
 The current state model separates two concerns:
 
@@ -37,6 +37,8 @@ dataLibrary/
   anims.json                          Named ambient animation action queues.
   mouth_shapes.json                   Mouth shapes, timing actions, and hold-scale data.
 tests/
+  test_default_reset.py               Default-state transition and runtime flush tests.
+  test_eye_look.py                    Command and scene-integration tests for gaze movement.
   test_thinking_manager.py            Unit and scene-integration tests for thinking mode.
 referenceImages/                      Visual reference material.
 TODO.txt                              Current project notes.
@@ -89,6 +91,7 @@ rotation
 
 ```text
 uses_expression
+expression
 roles
 position
 active
@@ -98,9 +101,9 @@ sequence_delay
 sequence
 ```
 
-`default` and `speaking` show the regular face and allow the current expression. They are currently configured identically. `thinking` sets `uses_expression` to `false`, hides the regular mouth, and transfers three dot roles to `ThinkingManager`.
+`default` is a coordinated reset state. It flushes speech and thinking ownership, clears stale animation actions, restores the neutral expression, centers gaze, assigns `eye_neutral`, blends objects back to their authored positions, and shrinks non-default objects before hiding them. When leaving thinking, the hidden mouth starts collapsed at the visible center of the thinking dots and eases both its position and shape into the normal face. The same mouth entry handoff is used for thinking-to-speaking. `speaking` keeps the regular face without forcing a neutral expression. `thinking` sets `uses_expression` to `false`, hides the regular mouth, and transfers three dot roles to `ThinkingManager`.
 
-If an expression command arrives during thinking mode, `FaceScene` remembers its name without applying it. When the scene returns to an expression-enabled face state, that most recent expression is applied.
+If an expression command arrives during thinking mode, `FaceScene` remembers its name without applying it. Returning specifically to `default` deliberately replaces that remembered value with `neutral`; another expression-enabled state can still apply the remembered expression.
 
 ## Thinking Manager
 
@@ -113,7 +116,7 @@ If an expression command arrives during thinking mode, `FaceScene` remembers its
 5. assigns the named `thinking` animation;
 6. delays each dot by `sequence * sequence_delay`.
 
-The default delays are `0.0`, `0.2`, and `0.4` seconds. The `think` action runs a continuous cosine-based hop with a 0.6-second cycle and an 18-pixel amplitude. It never completes on its own; leaving thinking mode calls `ThinkingManager.deactivate()`, which clears each controlled object's animation, offset, delay, and active state.
+The default delays are `0.0`, `0.2`, and `0.4` seconds. The `think` action runs a continuous cosine-based hop with a 0.6-second cycle and an 18-pixel amplitude. It never completes on its own. A normal default transition captures the current hop offset before releasing `ThinkingManager`, preventing the dots from snapping before they blend into the normal face.
 
 ## Commands
 
@@ -122,6 +125,9 @@ The renderer listens on `127.0.0.1:6001` for newline-delimited JSON objects.
 ```json
 {"type": "expression", "name": "happy"}
 {"type": "face_state", "name": "thinking"}
+{"type": "face_state", "name": "default", "duration": 0.4, "easing": "ease"}
+{"type": "face_state", "name": "default", "debug": "reset"}
+{"type": "look", "target": [1.0, -0.5], "duration": 0.25, "easing": "ease"}
 {"type": "speak", "syllables": [["a", 0.05, 0.22], ["m", 0.05, 0.12]]}
 {"type": "play", "audio": "<base64-encoded MP3>"}
 {"type": "stop_speech"}
@@ -129,15 +135,17 @@ The renderer listens on `127.0.0.1:6001` for newline-delimited JSON objects.
 
 Each speech item is `[mouth_shape, transition_time, total_time]`. `transition_time` controls the move into the new shape; `total_time` is the amount of audio time owned by that item.
 
-`stop_speech` clears the mouth queue and stops the Pygame mixer. `CommandClient.send_commands()` can send commands from tests, debug tools, or external scripts.
+Sending `default` normally uses the supplied duration/easing and stops active audio after the scene accepts the state. Adding `"debug": "reset"` makes every reset transition zero-duration for an immediate known-state reset. `stop_speech` only clears the mouth queue and stops the Pygame mixer. `CommandClient.send_commands()` can send commands from tests, debug tools, or external scripts.
+
+Look targets are normalized directions. `[0, 0]` centers the eyes, negative X looks left, positive X looks right, negative Y looks up, and positive Y looks down. The renderer bounds the direction to the unit circle and converts it into a gaze offset equal to 30 percent of the current eye radius. Gaze has its own animation channel, so `eye_neutral` hover/blink actions continue during look transitions in both the `default` and `speaking` face states. Thinking mode owns the reused eye objects and ignores look commands.
 
 ## Data Files
 
 ### `face_states.json`
 
-Defines display-level modes. A role entry can position and activate an object, select its controller, and attach an ambient animation. The thinking state also uses `sequence` and top-level `sequence_delay` to stagger the dots.
+Defines display-level modes. A role entry can position and activate an object, select its controller, and attach an ambient animation. The default state also selects its reset expression. The thinking state uses `sequence` and top-level `sequence_delay` to stagger the dots.
 
-Only `controller: "thinking"` currently triggers controller-specific dispatch. The `mouth` and `eye` controller strings are descriptive metadata in the present implementation.
+`controller: "thinking"` transfers object ownership to `ThinkingManager`; `controller: "eye"` identifies roles eligible for gaze commands. The `mouth` controller string remains descriptive metadata.
 
 ### `expressions.json`
 
@@ -167,7 +175,7 @@ think
 constanant_close
 ```
 
-`look` is still only a print stub. `constanant_close` is the implementation's current misspelled action name and must remain spelled that way in JSON until the code and data are migrated together.
+`look` lerps a separate gaze offset, allowing it to run concurrently with ambient eye actions. `constanant_close` is the implementation's current misspelled action name and must remain spelled that way in JSON until the code and data are migrated together.
 
 ### `mouth_shapes.json`
 
@@ -187,7 +195,7 @@ Start the Tkinter debug client from the repository root in a separate terminal:
 python -m Scripts.clientSideDebugger.llm_response_debugger
 ```
 
-It can send commands to the local renderer and exercise the ElevenLabs/debug alignment path.
+The debugger has separate Speech, Gaze, and Voice Design tabs. The Gaze tab can send a custom normalized X/Y target with duration and easing, or immediately send any of nine directional presets including Center. The Speech tab includes `Reset Default (No Blend)`, which sends the `debug: "reset"` form. These signals use the same host, port, worker-thread, status, and logging path as the other debugger commands.
 
 ## Environment Libraries
 
@@ -202,25 +210,24 @@ elevenlabs
 
 ## Tests
 
-Run the focused thinking-state suite from the repository root:
+Run the test suite from the repository root:
 
 ```powershell
-python -B -m unittest discover -s tests -p "test_thinking_manager.py"
+python -B -m unittest discover -s tests -p "test_*.py"
 ```
 
-The suite covers manager activation, staggered delays, deactivation, invalid duplicate sequences, the continuous hop, and the `FaceScene` ownership handoff.
+The suite covers seamless and immediate default resets, manager flushing, mouth entry into default/speaking, placement interpolation, debugger payloads, gaze routing/interpolation, and thinking-manager ownership.
 
 ## Current Limitations
 
-- Roles are centralized in `Roles`, but their object indices are still fixed, and `FaceScene.update()` still routes the mouth with an `i == 0` check instead of `roles.mouth_id`.
-- `default` and `speaking` face states are currently identical, and speech commands do not switch face states automatically.
+- Roles are centralized in `Roles`, but their object indices are still fixed.
+- Speech commands do not switch face states automatically; callers must send `speaking` or `default` explicitly.
 - Configured roles are forced active after their state is applied, so `active: false` is not currently honored as a general per-role visibility switch.
 - `FaceScene` has a `drawables` list and a shadowed `drawables()` method with the same name; the method is dead and assumes the object collection is a dictionary.
 - JSON files are not schema-validated, and their version fields are not type-consistent (`2` versus `"2"`).
 - The `default` animation entry is a string list rather than an action-dictionary queue and should not be assigned through `FaceObject.curr_anim` in its current form.
-- `look` does not move an object yet.
 - Audio playback depends on Pygame mixer support for the provided in-memory MP3 data.
-- The thinking path has focused tests, but the broader renderer, speech, command, and data-schema paths do not yet have comprehensive coverage.
+- Thinking and gaze paths have focused tests, but the broader renderer, speech, command, and data-schema paths do not yet have comprehensive coverage.
 - `LLMAgentClient.py` remains an integration sketch rather than part of the running application.
 
 ## License

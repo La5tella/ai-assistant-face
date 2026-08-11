@@ -29,8 +29,8 @@
                 "action":"look", 
                 "count":1, 
                 "type":"conditional", 
-                "transition_time": 0.5, 
-                "time_hold":2.0
+                "transition_time": 0.5,
+                "target_offset": [-30, 0]
             }
         ],
         "eye_look_right": [
@@ -38,8 +38,8 @@
                 "action":"look", 
                 "count":1, 
                 "type":"conditional", 
-                "transition_time": 0.5, 
-                "time_hold":2.0
+                "transition_time": 0.5,
+                "target_offset": [30, 0]
             }
         ],
         "anim_test": [

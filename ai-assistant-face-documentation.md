@@ -8,13 +8,13 @@ The scene model now has three distinct layers of responsibility:
 
 | Layer | Source | Responsibility |
 | --- | --- | --- |
-| Display mode | `dataLibrary/face_states.json` | Chooses visible roles, positions, controller ownership, and ambient animation. |
+| Display mode | `dataLibrary/face_states.json` | Chooses visible roles, positions, controller ownership, ambient animation, and the default reset expression. |
 | Appearance | `dataLibrary/expressions.json` | Chooses shape, scale, and rotation for the normal mouth and eyes. |
 | Motion | `dataLibrary/anims.json` | Defines reusable action queues such as eye blinking and the thinking-dot hop. |
 
 `ThinkingManager` is the controller-specific handoff for thinking mode. It temporarily repurposes the two eye objects, adds a third pooled object, and runs a staggered three-dot animation. Returning to a normal face state stops that controller and rebuilds the visible face from the current expression and face-state data.
 
-The project also has a mouth/viseme manager, a local TCP command path, Pygame audio playback, a Tkinter debugger, ElevenLabs timing helpers, and focused automated tests for the thinking-state flow. It remains a prototype: several schemas are only minimally validated, some role behavior is still index-dependent, and test coverage is narrow outside thinking mode.
+The project also has a mouth/viseme manager, a local TCP command path, Pygame audio playback, a Tkinter debugger, ElevenLabs timing helpers, and focused automated tests for the thinking-state and gaze-command flows. It remains a prototype: several schemas are only minimally validated, some role behavior is still index-dependent, and test coverage is narrow outside those paths.
 
 ## Current File Map
 
@@ -27,7 +27,7 @@ Scripts/MainLoop.py
 
 Scripts/display/FaceScene.py
   Owns the object pool and semantic role map.
-  Coordinates expression changes and display-mode changes.
+  Coordinates expression, display-mode, and normalized gaze changes.
   Hands thinking roles to ThinkingManager.
   Rebuilds the drawable list each frame.
 
@@ -75,7 +75,7 @@ Scripts/aiIntegration/LLMAgentClient.py
   Early LLM/TTS/command orchestration sketch; not in the live startup path.
 
 Scripts/clientSideDebugger/llm_response_debugger.py
-  Tkinter client for exercising expression, speech, and voice workflows.
+  Tkinter client for exercising expression, speech, gaze, and voice workflows.
 
 dataLibrary/face_states.json
   Display modes, role placement, visibility intent, and controller metadata.
@@ -92,6 +92,12 @@ dataLibrary/mouth_shapes.json
 tests/test_thinking_manager.py
   Unit tests for ThinkingManager and Animation.think().
   Integration test for FaceScene thinking ownership and restoration.
+
+tests/test_eye_look.py
+  Command, debugger, and scene integration tests for gaze movement.
+
+tests/test_default_reset.py
+  Manager-flush and seamless/immediate default reset tests.
 ```
 
 ## Startup and Runtime Flow
@@ -165,7 +171,7 @@ dot_right_id   = 3
 
 The first two thinking dots deliberately reuse the normal eye objects. The third dot uses object 3. `MainLoop` creates five objects, so object 4 is currently unassigned.
 
-Centralizing these values in `Roles` is better than exposing numeric JSON keys, but it is not a dynamic role registry. The mapping is still hardcoded in `FaceScene.py`, and one update path still checks `i == 0` directly for mouth ownership.
+Centralizing these values in `Roles` is better than exposing numeric JSON keys, but it is not a dynamic role registry. The mapping is still hardcoded in `FaceScene.py`; runtime mouth dispatch now resolves through `roles.mouth_id`.
 
 ### Expression flow
 
@@ -196,6 +202,7 @@ The display-mode path is:
 ```text
 set_face_state(face_state_name, duration, easing)
   -> look up face_state_data["states"][face_state_name]
+  -> route the configured default state through reset_to_default(...)
   -> save current_face_state
   -> collect roles whose controller is "thinking"
   -> deactivate an existing ThinkingManager session
@@ -206,9 +213,11 @@ set_face_state(face_state_name, duration, easing)
   -> pass thinking roles to ThinkingManager when present
 ```
 
-This rebuild-from-data approach is the key ownership boundary. `FaceScene` decides the mode and hands specialized roles to a controller. It does not ask `ThinkingManager` to restore the normal eyes later; instead, the next call to `set_face_state()` reapplies the normal expression and role data from scratch.
+This rebuild-from-data approach is the key ownership boundary. `FaceScene` decides the mode and hands specialized roles to a controller. The configured default state has a stricter lifecycle: `reset_to_default()` captures visible offsets, flushes speech/thinking/action state, applies neutral geometry and authored positions as transition targets, centers gaze, restarts `eye_neutral`, and shrinks non-default objects before deactivating them. When either default or speaking takes ownership directly from thinking, `FaceScene` asks `MouthManager` to create a collapsed mouth at the visible center of the thinking dots; the normal shape and placement transitions then grow and move it into the authored mouth pose.
 
-Only `controller: "thinking"` currently changes dispatch. The `mouth` and `eye` controller values in `face_states.json` are descriptive metadata; `FaceScene` does not dynamically look up controller objects for those strings.
+Normal default commands use the supplied duration and easing. A command containing `"debug": "reset"` forces shape, placement, gaze, retirement, and animation transition timers to zero.
+
+`controller: "thinking"` transfers role ownership to `ThinkingManager`. `controller: "eye"` identifies the normal eye roles eligible for gaze commands. The `mouth` controller value remains descriptive metadata.
 
 ### Object-state application
 
@@ -217,13 +226,13 @@ Only `controller: "thinking"` currently changes dispatch. The `mouth` and `eye` 
 ```text
 scale        -> obj.transform.scale
 rotation     -> obj.transform.rotation
-position     -> obj.transform.origin_position
+position     -> direct placement, or obj.set_origin_position(...) during default reset and mouth entry
 active       -> obj.active
 ambient_anim -> obj.curr_anim
 shape_state  -> obj.set_shape_state(...)
 ```
 
-If `shape_state` is absent, the method reapplies the object's current shape. That recalculates target vertices after scale or rotation changes without changing the named shape.
+During the coordinated default reset, position changes preserve the currently rendered origin and ease its offset to the authored destination. Other face states retain direct placement behavior except for the mouth's thinking-to-speaking entry. If `shape_state` is absent, the method reapplies the object's current shape. That recalculates target vertices after scale or rotation changes without changing the named shape.
 
 Other metadata such as `controller` and `sequence` is not applied to the object. `ThinkingManager` strips those keys before calling this callback. Non-thinking controller metadata simply passes through the loop without a matching case.
 
@@ -231,7 +240,7 @@ The old broad `setattr()` behavior is gone. That removes one class of accidental
 
 ### Per-frame update
 
-`FaceScene.update(dt)` clears and rebuilds the `drawables` list. Active object 0 is advanced through `MouthManager`; every other active object calls `FaceObject.update(dt)` directly. Each active object is then converted to a `DrawableMesh`.
+`FaceScene.update(dt)` clears and rebuilds the `drawables` list. The role-mapped mouth is advanced through `MouthManager`; when no syllable is active, the manager still advances `FaceObject.update(dt)` so state-driven mouth shape and placement transitions can finish. Every other active object calls `FaceObject.update(dt)` directly. Retiring non-default objects remain drawable until their shrink transition completes. Each remaining active object is then converted to a `DrawableMesh`.
 
 There is still a method named `drawables()` in the class, but the instance list `self.drawables` shadows it. The live runtime uses the list. The method is dead and also incorrectly assumes `self.objects` has a `.values()` method even though it is a list.
 
@@ -284,7 +293,7 @@ dot_right   sequence 2 -> 0.4 seconds
 
 ### Deactivation
 
-`deactivate()` sets `curr_anim` to `None` and `active` to `False` for every controlled object, clears `controlled_objects`, and marks the manager inactive.
+`deactivate()` sets `curr_anim` to `None` and `active` to `False` for every controlled object, clears `controlled_objects`, and marks the manager inactive. Its default-reset path first transfers the current hop offset into the placement channel so releasing the manager does not cause a visible snap.
 
 Clearing `curr_anim` also resets the object's action queue, action index, current animation action, start delay, and animation offset. `FaceScene.set_face_state()` is responsible for applying whichever state should appear next.
 
@@ -317,7 +326,7 @@ The current data split is deliberate:
 ```text
 face_states.json
   owns: role presence, position, active intent, controller, ambient_anim,
-        uses_expression, thinking sequence metadata
+        uses_expression, default expression selection, thinking sequence metadata
 
 expressions.json
   owns: shape_state, scale, rotation for the normal face roles
@@ -351,14 +360,16 @@ speaking
 thinking
 ```
 
-`default` and `speaking` currently contain the same normal-face configuration:
+`default` and `speaking` use the same normal-face role positions, but their runtime behavior differs:
 
-- `uses_expression` is `true`;
+- both set `uses_expression` to `true`;
 - mouth is placed at `[360, 540]`;
 - eyes are placed at `[180, 360]` and `[540, 360]`;
 - the eyes receive `eye_neutral` as their ambient animation.
+- `default` explicitly selects `neutral` and flushes manager/animation state;
+- `speaking` retains the current expression and does not perform a coordinated reset.
 
-The runtime does not automatically switch to `speaking` when speech starts, so the duplicate state currently provides a named mode without distinct behavior.
+The runtime does not automatically switch to `speaking` when speech starts. Callers remain responsible for sending the desired state commands.
 
 `thinking` has `uses_expression: false` and a top-level `sequence_delay` of 0.2. Its three roles are placed at x positions 300, 360, and 420 with y 420, use a 20-by-20 circle shape, declare `controller: "thinking"`, and carry sequences 0, 1, and 2.
 
@@ -414,7 +425,7 @@ anim_test
 
 `thinking` runs the continuous `think` hop described above.
 
-`eye_look_left` and `eye_look_right` select `look`, but `Animation.look()` currently only prints a message and returns no completion signal. These are not functional eye-look animations yet.
+`eye_look_left` and `eye_look_right` select `look` with target offsets of `[-30, 0]` and `[30, 0]`. Both named actions use the same gaze lerp as command-fed look targets.
 
 `default` is currently configured as:
 
@@ -504,7 +515,7 @@ Current action behavior:
 - `static`: completes after the object's shape transition ends.
 - `hover`: applies a vertical sine offset and completes after two cycles.
 - `blink`: closes vertices to the horizontal centerline and reopens them over `transition_time`.
-- `look`: prints a message; no geometric behavior or successful completion exists yet.
+- `look`: lerps a separate gaze offset, reports completion, and can run without interrupting hover or blink actions.
 - `think`: applies a continuous upward hop and relies on its manager for cancellation.
 - `constanant_close`: closes and reopens the mouth over two half transitions.
 
@@ -539,16 +550,24 @@ Current commands:
 ```json
 {"type": "expression", "name": "happy"}
 {"type": "face_state", "name": "thinking"}
+{"type": "face_state", "name": "default", "duration": 0.4, "easing": "ease"}
+{"type": "face_state", "name": "default", "debug": "reset"}
+{"type": "look", "target": [1.0, -0.5], "duration": 0.25, "easing": "ease"}
 {"type": "speak", "syllables": [["a", 0.05, 0.22], ["m", 0.05, 0.12]]}
 {"type": "play", "audio": "<base64-encoded MP3>"}
 {"type": "stop_speech"}
 ```
+
+Look targets are normalized directions. `[0, 0]` centers the gaze, each axis ranges from `-1` to `1`, and out-of-range vectors are normalized to the unit circle. `FaceScene.set_look_target()` converts the direction to an offset equal to 30 percent of the current eye radius and hands animation data to both active `controller: "eye"` roles. Thinking mode rejects gaze commands because those objects are temporarily owned as dots.
+
+A normal default command performs a blended reset and stops active audio after the scene accepts it. The `debug: "reset"` form uses the same cleanup order but makes every reset transition immediate. The debugger exposes that form as `Reset Default (No Blend)`.
 
 Command effects:
 
 ```text
 expression  -> FaceScene.set_expression(...)
 face_state  -> FaceScene.set_face_state(...)
+look        -> FaceScene.set_look_target(...)
 speak       -> MouthManager.activate_speak(...)
 play        -> AudioPlayer.play_base64_audio(...)
 stop_speech -> stop mouth timing and pygame.mixer.music
@@ -580,52 +599,51 @@ Layer and opacity values exist in the drawable contract, but the current loop do
 
 ## Tests
 
-Run the focused suite from the repository root:
+Run the test suite from the repository root:
 
 ```powershell
-python -B -m unittest discover -s tests -p "test_thinking_manager.py"
+python -B -m unittest discover -s tests -p "test_*.py"
 ```
 
-The five current tests cover:
+The current suites cover:
 
-1. dot repositioning and staggered start delays;
-2. deactivation, animation clearing, and visibility release;
-3. rejecting duplicate sequence numbers before scene mutation;
-4. continuous `think` hop geometry;
-5. `FaceScene` taking eye ownership for thinking mode, remembering an expression change, and restoring normal eye animations afterward.
+1. thinking-dot positioning, sequencing, animation, and ownership release;
+2. gaze interpolation, target replacement, named looks, and face-state ownership;
+3. seamless default placement/shape retirement and zero-duration debug reset;
+4. mouth position/shape entry from thinking into default and speaking;
+5. speech, animation, gaze, and expression flushing during default reset;
+6. listener, AI-client, and debugger payload generation and validation;
+7. debugger directional presets and selected host/port routing.
 
 The tests stub `pygame` because the covered manager and scene-state behavior does not need a live window.
 
 ## Current Limitations
 
 - `Roles` centralizes ids, but it remains a fixed index map rather than a validated registry.
-- `FaceScene.update()` still checks `i == 0` instead of `i == self.roles.mouth_id`.
 - Object 4 is allocated but has no semantic role.
-- `default` and `speaking` face states are identical, and speech does not change face state automatically.
+- Speech does not change face state automatically.
 - Configured role objects are forced active, so authored `active: false` is overwritten.
 - Leaving speech deactivates the mouth without restoring the current face-state visibility.
 - `FaceScene.drawables` shadows a broken method with the same name.
 - JSON files have no schema validator, and version metadata types are inconsistent.
 - The `default` animation payload does not match the action-dictionary contract.
-- `look` is a print stub and never reports completion.
 - The misspelled `constanant_close` name is embedded in both code and data.
 - Listener validation stops at the top-level command type; nested payload errors reach the main loop.
 - Layer sorting and opacity rendering are not active.
 - Audio depends on the local Pygame mixer and MP3 support.
-- Automated coverage is focused on thinking mode; mouth timing, commands, audio, rendering, and data schemas still lack comprehensive tests.
+- Automated coverage includes thinking, gaze, and default reset behavior; mouth timing, audio, rendering, and data schemas still lack comprehensive tests.
 - `LLMAgentClient.py` remains a design sketch.
 
 ## Practical Next Steps
 
 The highest-value cleanup is at the state boundary, not in additional animation features:
 
-1. Replace the last direct mouth index check with `roles.mouth_id`.
-2. Decide whether role presence or the `active` field owns visibility, then enforce one contract.
-3. Restore the current face state when speech finishes, or explicitly define speech as a face-state transition.
-4. Remove or rename the shadowed `drawables()` method.
-5. Add schema validation for all four data-library files and normalize version types.
-6. Repair or remove the malformed `default` animation entry.
-7. Add command-payload tests for face state, speech triplets, play, and stop behavior.
-8. Expand integration tests beyond thinking mode before adding more controllers.
+1. Decide whether role presence or the `active` field owns visibility, then enforce one contract.
+2. Restore the current face state when speech finishes, or explicitly define speech as a face-state transition.
+3. Remove or rename the shadowed `drawables()` method.
+4. Add schema validation for all four data-library files and normalize version types.
+5. Repair or remove the malformed `default` animation entry.
+6. Add command-payload tests for speech triplets, play, and stop behavior.
+7. Expand integration tests before adding more controllers.
 
-The current implementation has a coherent display-mode handoff and a working thinking controller. The remaining problems are mostly contract enforcement and lifecycle cleanup; the documentation should continue to describe those limits plainly rather than presenting the prototype as a finished scene framework.
+The current implementation has a coordinated default lifecycle, a working thinking controller, and independent gaze motion. The remaining problems are mostly contract enforcement and automatic speech-state handoff; the documentation should continue to describe those limits plainly rather than presenting the prototype as a finished scene framework.

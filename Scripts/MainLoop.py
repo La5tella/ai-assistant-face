@@ -102,7 +102,26 @@ def listen_for_input(command_queue):
                 face_scene.set_expression(command.get("name", "neutral"))
 
             case "face_state":
-                face_scene.set_face_state(command.get("name", "default"))
+                face_state_name = command.get("name", "default")
+                state_changed = face_scene.set_face_state(
+                    face_state_name,
+                    command.get("duration", 0.25),
+                    command.get("easing", "ease"),
+                    command.get("debug"),
+                )
+                if (
+                    state_changed
+                    and face_state_name
+                    == face_scene.face_state_data.get("default_state", "default")
+                ):
+                    audio_player.stfu()
+
+            case "look":
+                face_scene.set_look_target(
+                    command.get("target"),
+                    command.get("duration", 0.25),
+                    command.get("easing", "ease"),
+                )
 
             case "speak":
                 syllables = [

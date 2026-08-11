@@ -6,6 +6,7 @@ import sys
 import threading
 import tkinter as tk
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -24,6 +25,7 @@ from Scripts.aiIntegration.ElevenLabsClient import (
 
 
 VOICE_LIBRARY_PATH = REPO_ROOT / "dataLibrary" / "voice_library.json"
+LOOK_EASINGS = ("linear", "ease-in", "ease-out", "ease")
 
 
 def load_expression_names() -> list[str]:
@@ -131,6 +133,37 @@ def utc_timestamp() -> str:
     )
 
 
+def build_look_command(
+    target_x,
+    target_y,
+    duration,
+    easing="ease",
+) -> dict:
+    """Validate debugger gaze fields and build one renderer command."""
+    try:
+        target_x = float(target_x)
+        target_y = float(target_y)
+        duration = float(duration)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("X, Y, and duration must be numeric.") from exc
+
+    if not all(isfinite(value) for value in (target_x, target_y, duration)):
+        raise ValueError("X, Y, and duration must be finite numbers.")
+    if not -1 <= target_x <= 1 or not -1 <= target_y <= 1:
+        raise ValueError("X and Y must each be between -1 and 1.")
+    if duration < 0:
+        raise ValueError("Duration must be zero or greater.")
+    if easing not in LOOK_EASINGS:
+        raise ValueError(f"Easing must be one of: {', '.join(LOOK_EASINGS)}.")
+
+    return {
+        "type": "look",
+        "target": [target_x, target_y],
+        "duration": duration,
+        "easing": easing,
+    }
+
+
 class LLMResponseDebugger(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -152,6 +185,10 @@ class LLMResponseDebugger(tk.Tk):
         self.face_state_var = tk.StringVar(value=self.face_state_names[0])
         self.expression_names = load_expression_names()
         self.expression_var = tk.StringVar(value=self.expression_names[0])
+        self.look_x_var = tk.StringVar(value="0.0")
+        self.look_y_var = tk.StringVar(value="0.0")
+        self.look_duration_var = tk.StringVar(value="0.25")
+        self.look_easing_var = tk.StringVar(value="ease")
         self.saved_voice_var = tk.StringVar(value="")
         self.saved_voice_lookup = {}
         self.speech_voice_id_var = tk.StringVar(value=DEFAULT_TTS_VOICE_ID)
@@ -205,12 +242,15 @@ class LLMResponseDebugger(tk.Tk):
         self.notebook.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 6))
 
         self.speech_tab = ttk.Frame(self.notebook)
+        gaze_tab = ttk.Frame(self.notebook)
         voice_design_tab = ttk.Frame(self.notebook)
 
         self.notebook.add(self.speech_tab, text="Speech")
+        self.notebook.add(gaze_tab, text="Gaze")
         self.notebook.add(voice_design_tab, text="Voice Design")
 
         self._build_speech_tab(self.speech_tab)
+        self._build_gaze_tab(gaze_tab)
         self._build_voice_design_tab(voice_design_tab)
 
         log_frame = ttk.Frame(self, padding=(12, 6, 12, 12))
@@ -350,6 +390,119 @@ class LLMResponseDebugger(tk.Tk):
             command=lambda: self.response_text.delete("1.0", "end"),
         ).grid(row=0, column=4, sticky="w", padx=(8, 0))
 
+        self.reset_default_button = ttk.Button(
+            button_frame,
+            text="Reset Default (No Blend)",
+            command=self._send_default_reset,
+        )
+        self.reset_default_button.grid(row=1, column=0, sticky="w", pady=(8, 0))
+        self.action_buttons.append(self.reset_default_button)
+
+    def _build_gaze_tab(self, parent: ttk.Frame) -> None:
+        parent.columnconfigure(0, weight=1)
+
+        ttk.Label(
+            parent,
+            text=(
+                "Send a normalized gaze target. X: -1 left to 1 right. "
+                "Y: -1 up to 1 down. Preset buttons send immediately."
+            ),
+            wraplength=520,
+        ).grid(row=0, column=0, sticky="w", pady=(10, 8))
+
+        target_frame = ttk.LabelFrame(parent, text="Custom target", padding=10)
+        target_frame.grid(row=1, column=0, sticky="ew")
+
+        ttk.Label(target_frame, text="X").grid(row=0, column=0, sticky="w")
+        ttk.Spinbox(
+            target_frame,
+            from_=-1.0,
+            to=1.0,
+            increment=0.1,
+            textvariable=self.look_x_var,
+            width=8,
+        ).grid(row=0, column=1, sticky="w", padx=(6, 16))
+
+        ttk.Label(target_frame, text="Y").grid(row=0, column=2, sticky="w")
+        ttk.Spinbox(
+            target_frame,
+            from_=-1.0,
+            to=1.0,
+            increment=0.1,
+            textvariable=self.look_y_var,
+            width=8,
+        ).grid(row=0, column=3, sticky="w", padx=(6, 16))
+
+        ttk.Label(target_frame, text="Duration").grid(
+            row=0,
+            column=4,
+            sticky="w",
+        )
+        ttk.Spinbox(
+            target_frame,
+            from_=0.0,
+            to=5.0,
+            increment=0.05,
+            textvariable=self.look_duration_var,
+            width=8,
+        ).grid(row=0, column=5, sticky="w", padx=(6, 16))
+
+        ttk.Label(target_frame, text="Easing").grid(row=0, column=6, sticky="w")
+        ttk.Combobox(
+            target_frame,
+            textvariable=self.look_easing_var,
+            values=LOOK_EASINGS,
+            state="readonly",
+            width=10,
+        ).grid(row=0, column=7, sticky="w", padx=(6, 0))
+
+        self.look_send_button = ttk.Button(
+            target_frame,
+            text="Send Look Target",
+            command=self._send_look,
+        )
+        self.look_send_button.grid(
+            row=1,
+            column=0,
+            columnspan=8,
+            sticky="w",
+            pady=(10, 0),
+        )
+        self.action_buttons.append(self.look_send_button)
+
+        preset_frame = ttk.LabelFrame(
+            parent,
+            text="Preset signals",
+            padding=10,
+        )
+        preset_frame.grid(row=2, column=0, sticky="w", pady=(10, 0))
+
+        presets = (
+            ("Up Left", -1.0, -1.0),
+            ("Up", 0.0, -1.0),
+            ("Up Right", 1.0, -1.0),
+            ("Left", -1.0, 0.0),
+            ("Center", 0.0, 0.0),
+            ("Right", 1.0, 0.0),
+            ("Down Left", -1.0, 1.0),
+            ("Down", 0.0, 1.0),
+            ("Down Right", 1.0, 1.0),
+        )
+        for index, (label, target_x, target_y) in enumerate(presets):
+            button = ttk.Button(
+                preset_frame,
+                text=label,
+                width=12,
+                command=lambda x=target_x, y=target_y: self._send_look_preset(x, y),
+            )
+            button.grid(
+                row=index // 3,
+                column=index % 3,
+                padx=(0 if index % 3 == 0 else 6, 0),
+                pady=(0 if index < 3 else 6, 0),
+            )
+            self.action_buttons.append(button)
+
     def _build_voice_design_tab(self, parent: ttk.Frame) -> None:
         parent.columnconfigure(0, weight=1)
         parent.rowconfigure(1, weight=1)
@@ -449,12 +602,45 @@ class LLMResponseDebugger(tk.Tk):
             lambda: self._create_and_send_face_state_command(face_state_name),
         )
 
+    def _send_default_reset(self) -> None:
+        self._run_in_worker(
+            "Sending immediate default reset...",
+            lambda: self._create_and_send_face_state_command(
+                "default",
+                debug="reset",
+            ),
+        )
+
     def _send_expression(self) -> None:
         expression_name = self.expression_var.get()
         self._run_in_worker(
             f"Sending {expression_name} expression...",
             lambda: self._create_and_send_expression_command(expression_name),
         )
+
+    def _send_look(self) -> None:
+        try:
+            command = build_look_command(
+                self.look_x_var.get(),
+                self.look_y_var.get(),
+                self.look_duration_var.get(),
+                self.look_easing_var.get(),
+            )
+        except ValueError as exc:
+            messagebox.showwarning("Invalid look target", str(exc))
+            return
+
+        host = self.host_var.get()
+        port = self.port_var.get()
+        self._run_in_worker(
+            f"Sending look target {command['target']}...",
+            lambda: self._create_and_send_look_command(command, host, port),
+        )
+
+    def _send_look_preset(self, target_x: float, target_y: float) -> None:
+        self.look_x_var.set(f"{target_x:.1f}")
+        self.look_y_var.set(f"{target_y:.1f}")
+        self._send_look()
 
     def _send_stop_speech(self) -> None:
         self._run_in_worker(
@@ -552,13 +738,24 @@ class LLMResponseDebugger(tk.Tk):
             f"Voice ID={voice_id}. Debug ElevenLabs={debug_elevenlabs}"
         )
 
-    def _create_and_send_face_state_command(self, face_state_name: str) -> None:
+    def _create_and_send_face_state_command(
+        self,
+        face_state_name: str,
+        debug=None,
+    ) -> None:
+        command = {"type": "face_state", "name": face_state_name}
+        if debug is not None:
+            command["debug"] = debug
+
         send_commands(
-            [{"type": "face_state", "name": face_state_name}],
+            [command],
             host=self.host_var.get(),
             port=self.port_var.get(),
         )
-        self.log_queue.put(f"Sent face state: {face_state_name}")
+        debug_suffix = "" if debug is None else f" (debug={debug})"
+        self.log_queue.put(
+            f"Sent face state: {face_state_name}{debug_suffix}"
+        )
 
     def _create_and_send_expression_command(self, expression_name: str) -> None:
         send_commands(
@@ -567,6 +764,22 @@ class LLMResponseDebugger(tk.Tk):
             port=self.port_var.get(),
         )
         self.log_queue.put(f"Sent expression: {expression_name}")
+
+    def _create_and_send_look_command(
+        self,
+        command: dict,
+        host: str,
+        port: int,
+    ) -> None:
+        send_commands(
+            [command],
+            host=host,
+            port=port,
+        )
+        self.log_queue.put(
+            f"Sent look target: {command['target']}. "
+            f"Duration={command['duration']}. Easing={command['easing']}"
+        )
 
     def _create_voice_design_previews(self, voice_description: str) -> None:
         previews = create_voice_design_previews(voice_description)

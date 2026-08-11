@@ -105,6 +105,7 @@ class MouthManager:
 
     def update(self,dt):
         if self.curr_syllable is None:
+            self.mouth.update(dt)
             return
 
         self.time += dt
@@ -113,6 +114,26 @@ class MouthManager:
         self.transition_check()
 
     def stfu(self):
+        self.reset()
+        self.mouth.active = False
+
+    def prepare_transition_in(self, position):
+        """Create a collapsed entry pose that the mouth can ease out of."""
+        self.reset()
+        self.mouth.clear_position_transition()
+        self.mouth.transform.origin_position = [
+            float(position[0]),
+            float(position[1]),
+        ]
+        self.mouth.transform.scale = [0.0, 0.0]
+        self.mouth.set_shape_state(self.mouth.shape_state, duration=0)
+
+    def reset(self, preserve_visual_position=False):
+        """Flush speech ownership while leaving geometry available to blend."""
+        if preserve_visual_position:
+            self.mouth.preserve_animation_offset()
+
         self.curr_syllable = None
         self.syllable_queue = []
-        self.mouth.active = False
+        self.time = 0
+        self.mouth.curr_anim = None

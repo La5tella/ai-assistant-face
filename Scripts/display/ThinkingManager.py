@@ -69,9 +69,11 @@ class ThinkingManager:
 
         self.active = True
 
-    def deactivate(self):
+    def deactivate(self, preserve_visual_position=False):
         """Stop the thinking animation and release every repurposed object."""
         for obj in self.controlled_objects:
+            if preserve_visual_position:
+                obj.preserve_animation_offset()
             obj.curr_anim = None
             obj.active = False
 
